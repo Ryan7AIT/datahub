@@ -29,6 +29,9 @@ cur.execute('DROP TABLE IF EXISTS vehicle_dim')
 # Drop the third dimension table if it exists
 cur.execute('DROP TABLE IF EXISTS location_dim')
 
+cur.execute('DROP TABLE IF EXISTS thing_dim')
+
+
 
 
 # Create the first dimension table
@@ -76,6 +79,18 @@ cur.execute('''
 ''')
 
 
+cur.execute('''
+            CREATE TABLE thing_dim (
+             thing_id SERIAL PRIMARY KEY,
+            thing_type VARCHAR(50),
+            thing_name TEXT,
+            thing_plate VARCHAR(50)
+            
+                )
+''')
+
+
+
 # Create the fact table
 cur.execute('''
     CREATE TABLE vehicle_peroformance (
@@ -89,11 +104,13 @@ cur.execute('''
             first_start_time TIMESTAMP,
             last_stop_time TIMESTAMP,
             date_id INT REFERENCES date_dim(date_id),
-            vehicle_id INT REFERENCES vehicle_dim(vehicle_id),
+            thing_id INT REFERENCES thing_dim(thing_id),
             location_id INT REFERENCES location_dim(location_id)
             
                 )
 ''')
+
+
 
 # Commit the changes to the database
 conn.commit()
