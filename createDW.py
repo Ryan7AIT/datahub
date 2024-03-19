@@ -38,14 +38,20 @@ cur.execute('DROP TABLE IF EXISTS thing_dim')
 cur.execute('''
     CREATE TABLE date_dim (
         date_id SERIAL PRIMARY KEY,
-            hour INT,
-            day INT,
-            month INT,
-            monthname VARCHAR(20),
+            full_date DATE,
             year INT,
-            quarter INT
+            month INT,
+            day INT,
+            month_year VARCHAR(7),
+            month_name VARCHAR(20),
+            quarter VARCHAR(7),
+            day_type VARCHAR(10),
+            season VARCHAR(10)
     )
 ''')
+
+
+
 
 # Create the second dimension table
 cur.execute('''
