@@ -2,11 +2,11 @@ import psycopg2
 
 # Establish a connection to the PostgreSQL database
 conn = psycopg2.connect(
-    host="your_host",
-    port="your_port",
-    database="your_database",
-    user="your_username",
-    password="your_password"
+    host="localhost",
+    port="5432",
+    database="geopfe",
+    user="postgres",
+    password="ryqn"
 )
 
 print('111')
@@ -15,41 +15,89 @@ cur = conn.cursor()
 
 # Perform database operations here
 
-# Close the cursor and connection
-cur.close()
-conn.close()
 
-# Create the fact table
-cur.execute('''
-    CREATE TABLE fact_table (
-        fact_id SERIAL PRIMARY KEY,
-        -- Add your fact table columns here
-    )
-''')
+
+# Drop the fact table if it exists
+cur.execute('DROP TABLE IF EXISTS vehicle_peroformance')
+
+# Drop the first dimension table if it exists
+cur.execute('DROP TABLE IF EXISTS date_dim')
+
+# Drop the second dimension table if it exists
+cur.execute('DROP TABLE IF EXISTS vehicle_dim')
+
+# Drop the third dimension table if it exists
+cur.execute('DROP TABLE IF EXISTS location_dim')
+
+
 
 # Create the first dimension table
 cur.execute('''
-    CREATE TABLE dim_table1 (
-        dim_id SERIAL PRIMARY KEY,
-        -- Add your first dimension table columns here
+    CREATE TABLE date_dim (
+        date_id SERIAL PRIMARY KEY,
+            hour INT,
+            day INT,
+            month INT,
+            monthname VARCHAR(20),
+            year INT,
+            quarter INT
     )
 ''')
 
 # Create the second dimension table
 cur.execute('''
-    CREATE TABLE dim_table2 (
-        dim_id SERIAL PRIMARY KEY,
-        -- Add your second dimension table columns here
+    CREATE TABLE vehicle_dim (
+         vehicle_id SERIAL PRIMARY KEY,
+            vehicle_name VARCHAR(50),
+            vehicle_type VARCHAR(50),
+            vehicle_model VARCHAR(50),
+            vehicle_color VARCHAR(50),
+            vehicle_year INT,
+            vehicle_brand VARCHAR(50) ,
+            car_plate VARCHAR(50),
+            vehicle_owner VARCHAR(50),
+            carburant_type VARCHAR(50)
     )
 ''')
 
 # Create the third dimension table
 cur.execute('''
-    CREATE TABLE dim_table3 (
-        dim_id SERIAL PRIMARY KEY,
-        -- Add your third dimension table columns here
+    CREATE TABLE location_dim (
+        location_id SERIAL PRIMARY KEY,
+            latitude FLOAT,
+            longitude FLOAT,
+            altitude FLOAT,
+            country VARCHAR(50),
+            city VARCHAR(50),
+            street VARCHAR(50),
+            postal_code VARCHAR(50),
+            region VARCHAR(50)
     )
+''')
+
+
+# Create the fact table
+cur.execute('''
+    CREATE TABLE vehicle_peroformance (
+        fact_id SERIAL PRIMARY KEY,
+            travled_distance FLOAT,
+            avg_speed FLOAT,
+            max_speed FLOAT,
+            idle_time FLOAT,
+            active_time FLOAT,
+            battery_level FLOAT,
+            first_start_time TIMESTAMP,
+            last_stop_time TIMESTAMP,
+            date_id INT REFERENCES date_dim(date_id),
+            vehicle_id INT REFERENCES vehicle_dim(vehicle_id),
+            location_id INT REFERENCES location_dim(location_id)
+            
+                )
 ''')
 
 # Commit the changes to the database
 conn.commit()
+
+# Close the cursor and connection
+cur.close()
+conn.close()
