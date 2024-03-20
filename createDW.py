@@ -100,19 +100,16 @@ cur.execute('''
 # Create the fact table
 cur.execute('''
     CREATE TABLE vehicle_peroformance (
-        fact_id SERIAL PRIMARY KEY,
+                        idle_time FLOAT,
+                        active_time FLOAT,
+
             travled_distance FLOAT,
             avg_speed FLOAT,
             max_speed FLOAT,
-            idle_time FLOAT,
-            active_time FLOAT,
-            battery_level FLOAT,
-            first_start_time TIMESTAMP,
-            last_stop_time TIMESTAMP,
+      
             date_id INT REFERENCES date_dim(date_id),
             thing_id INT REFERENCES thing_dim(thing_id),
-            location_id INT REFERENCES location_dim(location_id)
-            
+             PRIMARY KEY (date_id, thing_id)           
                 )
 ''')
 
