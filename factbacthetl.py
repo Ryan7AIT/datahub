@@ -116,6 +116,7 @@ FROM (
     JOIN 
         date_dim d ON t.trace_date_day = d.full_date
         WHERE      thing_id <= 4333
+        and speed <= 300
 ) AS subquery
 WHERE 
     prev_latitude IS NOT NULL
