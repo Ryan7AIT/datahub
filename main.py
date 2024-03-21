@@ -5,6 +5,7 @@ from cassandra.cluster import Cluster
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import psycopg2
+from cassandra.cluster import Cluster
 
 app = FastAPI()
 
@@ -60,7 +61,7 @@ def get_things():
     return rows
 
 
-@app.get("/get_data/{thing_id}")
+@app.get("/query/{thing_id}")
 def get_data(thing_id: int) -> Union[list, None]:
     """
     Endpoint to get data for a specific thing.
@@ -74,27 +75,16 @@ def get_data(thing_id: int) -> Union[list, None]:
     """
     select_query = f"""
     SELECT
-        v.thing_id,
-        t.thing_name,
-        v.date_id,
-        d.month_name,
-        idle_time,
-        active_time
+        thing_id,
+        thing_name
     FROM
-        vehicle_peroformance v,
-        thing_dim t,
-        date_dim d
+        thing_dim
     WHERE
-        v.date_id = d.date_id
-        AND v.thing_id = t.thing_id
-        AND v.thing_id = {thing_id}
-    GROUP BY
-        t.thing_name,
-        v.thing_id,
-        v.date_id,
-        idle_time,
-        d.month_name,
-        active_time;
+
+        thing_id = {thing_id}
+
+LIMIT 1
+ 
     """
     cursor_postgres.execute(select_query)
     rows = cursor_postgres.fetchall()
@@ -458,3 +448,53 @@ def search_thing(thing_id: str) -> Union[list, None]:
     rows = cursor_postgres.fetchall()
 
     return rows
+
+
+
+# ==================================================================================
+# real time
+
+# Connect to Cassandra cluster
+cluster = Cluster(['localhost'])
+session = cluster.connect()
+
+
+# Use the keyspace
+session.set_keyspace('pfe')
+
+# define a route to get lastes real time data for a thing_id
+@app.get("/realtime/{thing_id}")
+def get_realtime_data(thing_id: str) -> Union[list, None]:
+    """
+    Endpoint to get real-time data for a specific thing.
+
+    Args:
+        thing_id (int): The ID of the thing.
+
+    Returns:
+        list: A list of real-time data for the specified thing.
+        None: If no real-time data is found for the specified thing.
+    """
+    select_query = f"""
+    SELECT
+        *
+    FROM
+        trace
+    WHERE
+        thing_id = '{thing_id}'
+        
+    LIMIT 1;
+    """
+    rows = session.execute(select_query)
+    return rows
+# Insert data into the table
+# session.execute("INSERT INTO my_table (id, name) VALUES (uuid(), 'John Doe')")
+
+# # Query the table
+# result = session.execute("SELECT * FROM my_table")
+# for row in result:
+#     print(row.id, row.name)
+
+# # Close the connection
+# session.shutdown()
+# cluster.shutdown()

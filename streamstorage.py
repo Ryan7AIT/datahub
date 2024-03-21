@@ -5,12 +5,36 @@ cluster = Cluster(['localhost'])  # Replace 'localhost' with your Cassandra clus
 session = cluster.connect()
 
 # Use the session to execute queries
-session.execute("USE keyspace_name")  # Replace 'keyspace_name' with your keyspace name
 
 # Perform your operations here
 
+# creaye a keyspace
+session.execute("""
+                CREATE KEYSPACE IF NOT EXISTS pfe
+                WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor': 1}
+                """
+               )
+
+session.execute("USE pfe")  # Replace 'keyspace_name' with your keyspace name
+
 # Create a sample table
-session.execute("CREATE TABLE IF NOT EXISTS my_table (id UUID PRIMARY KEY, name TEXT)")
+session.execute("""
+                
+                CREATE TABLE IF NOT EXISTS pfe.trace (
+    trace_id text,
+    thing_id text,
+    trace_date text,
+    long double,
+    lat double,
+    speed int,
+    engine_status text,
+    PRIMARY KEY (thing_id, trace_date)
+) WITH CLUSTERING ORDER BY (trace_date DESC);
+                """
+               )
+
+
+
 
 # Close the connection
 session.shutdown()
