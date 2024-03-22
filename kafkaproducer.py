@@ -19,7 +19,7 @@ def produce_events(bootstrap_servers, topic):
             'trace_date': str(datetime.now()),
             'long': random.uniform(-180, 180),
             'lat': random.uniform(-90, 90),
-            'speed': random.randint(0, 100),
+            'speed': random.randint(10, 100),
             'engine_status': random.choice(['running', 'stopped'])
         }
 

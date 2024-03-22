@@ -61,7 +61,7 @@ def get_things():
     return rows
 
 
-@app.get("/query/{thing_id}")
+@app.get("/query/get_thing/{thing_id}")
 def get_data(thing_id: int) -> Union[list, None]:
     """
     Endpoint to get data for a specific thing.
@@ -285,6 +285,11 @@ def get_thing(thing_id: Optional[int]=None, years: Optional[str] = None, months:
     return result_list
 
 
+@app.get("/q")
+def geta():
+    return ['11']
+
+
 
 
 # get speed
@@ -304,7 +309,6 @@ def get_speed(thing_id: Optional[int]=None, years: Optional[str] = None, months:
         list: A list of data for the specified thing.
         None: If no data is found for the specified thing.
     """
-
 
 
     select_query = f"""
@@ -454,13 +458,6 @@ def search_thing(thing_id: str) -> Union[list, None]:
 # ==================================================================================
 # real time
 
-# Connect to Cassandra cluster
-cluster = Cluster(['localhost'])
-session = cluster.connect()
-
-
-# Use the keyspace
-session.set_keyspace('pfe')
 
 # define a route to get lastes real time data for a thing_id
 @app.get("/realtime/{thing_id}")
@@ -475,6 +472,15 @@ def get_realtime_data(thing_id: str) -> Union[list, None]:
         list: A list of real-time data for the specified thing.
         None: If no real-time data is found for the specified thing.
     """
+
+    # Connect to Cassandra cluster
+    cluster = Cluster(['localhost'])
+    session = cluster.connect()
+
+
+    # Use the keyspace
+    session.set_keyspace('pfe')
+
     select_query = f"""
     SELECT
         *
@@ -486,15 +492,26 @@ def get_realtime_data(thing_id: str) -> Union[list, None]:
     LIMIT 1;
     """
     rows = session.execute(select_query)
-    return rows
-# Insert data into the table
-# session.execute("INSERT INTO my_table (id, name) VALUES (uuid(), 'John Doe')")
 
-# # Query the table
-# result = session.execute("SELECT * FROM my_table")
-# for row in result:
-#     print(row.id, row.name)
+        # Convert rows to a list of dictionaries
+    data = []
+    for row in rows:
+        data.append({
+            "thing_id": row[0],
+            "timestamp": row[1],
+            "status": row[2],
+            "latitude": row[3],
+            "longitude": row[4],
+            "speed": row[5],
+            "other_column": row[6]  # Add more columns as needed
+        })
 
-# # Close the connection
-# session.shutdown()
-# cluster.shutdown()
+    # Close the connection
+    session.shutdown()
+    cluster.shutdown()
+
+    return data
+
+
+
+
