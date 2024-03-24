@@ -455,6 +455,67 @@ def search_thing(thing_id: str) -> Union[list, None]:
 
 
 
+# get number of alerts
+@app.get("/query/alerts")
+def get_alerts(thing_id: Optional[int]=None, years: Optional[str] = None, months: Optional[str] = None, d1: Optional[str] = None, d2: Optional[str] = None) -> Union[list, None]:
+    """
+    Endpoint to get data for a specific thing.
+
+    Args:
+        thing_id (int): The ID of the thing.
+        years (Optional[List[int]]): List of years.
+        months (Optional[List[str]]): List of months.
+        d1 (Optional[str]): Start date.
+        d2 (Optional[str]): End date.
+
+    Returns:
+        list: A list of data for the specified thing.
+        None: If no data is found for the specified thing.
+    """
+
+
+    select_query = f"""
+            SELECT
+                f.alert_degree_id,
+                COUNT(alert_count)
+            FROM
+                alert_fact f,
+                alert_deg_dim d
+            WHERE
+                f.alert_degree_id = d.alert_degree_id
+     
+    """
+
+    if thing_id :
+        select_query += f" AND a.thing_id = {thing_id} group by f.alert_degree_id"
+    else:
+        select_query += " group by f.alert_degree_id"
+
+
+
+    cursor_postgres.execute(select_query)
+    rows = cursor_postgres.fetchall()
+
+    # extract alert_degree_id and alert_count into separate lists
+    alert_degree_id = [entry[0] for entry in rows]
+    alert_count = [entry[1] for entry in rows]
+
+    # Creating a list containing alert_degree_id and alert_count lists
+    result_list = [alert_degree_id, alert_count]
+    return result_list
+
+            # Convert rows to a list of dictionaries
+    data = []
+    for row in rows:
+        data.append({
+            "alert_degree_id": row[0],
+            "alert_count": row[1]
+        })
+    
+    return data
+
+
+
 # ==================================================================================
 # real time
 
