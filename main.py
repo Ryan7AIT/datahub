@@ -6,6 +6,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import psycopg2
 from cassandra.cluster import Cluster
+from pyspark.sql import SparkSession
 
 app = FastAPI()
 
@@ -576,3 +577,79 @@ def get_realtime_data(thing_id: str) -> Union[list, None]:
 
 
 
+
+
+
+
+
+# ----------------------------------------------------------
+# ----------------------------------------------------------
+# ----------------------------------------------------------
+# ----------------------------------------------------------
+# ----------------------------------------------------------
+# ----------------------------------------------------------
+# ----------------------------------------------------------
+# ----------------------------------------------------------
+# ----------------------------------------------------------
+# ----------------------------------------------------------
+# ----------------------------------------------------------
+# ----------------------------------------------------------
+# ----------------------------------------------------------
+# ----------------------------------------------------------
+# testing routes
+
+
+# define a route to get the avg speed for a thing_id
+
+@app.get("/test")
+def get_test_data() -> Union[list, None]:
+    select_query = f"""
+        SELECT
+            "year",
+            AVG(v.avg_speed),
+            MAX(v.max_speed)
+            FROM
+            vehicle_peroformance v,
+            thing_dim t,
+            date_dim d
+        WHERE
+            v.date_id = d.date_id
+            AND v.thing_id = t.thing_id
+            group by "year"
+    """
+
+    #cassanda connection
+    cluster = Cluster(['localhost'])
+    session = cluster.connect()
+    session.set_keyspace('pfe')
+    select_query2 = f"""
+   select avg(avg_speed) from vehicle_performance;
+   """
+    rows2 = session.execute(select_query2)
+    data = []
+    for row in rows2:
+        data.append({
+            "avg_speed": row[0]
+        })
+
+    
+    # return [data[0]['avg_speed']]
+
+
+    cursor_postgres.execute(select_query)
+    rows = cursor_postgres.fetchall()
+    # Extracting years and distances into separate lists
+    years = [entry[0] for entry in rows]
+    avg_speed = [entry[1] for entry in rows]
+    max_speed = [entry[2] for entry in rows]
+
+    # add the avg speed to the cassandra data
+    data.append({
+        "avg_speed": avg_speed
+    })
+
+    # Creating a list containing years and distances lists
+    result_list = [years, avg_speed, max_speed]
+    return avg_speed
+        
+    return ['rss']

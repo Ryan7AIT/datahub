@@ -50,14 +50,20 @@ if __name__ == "__main__":
     # updated_df = updated_df.withColumn("avg_speed", col("old.avg_speed") + col("new.speed"))
     #cehck if column is not null
     updated_df = updated_df.withColumn('avg_speed', F.when(F.col('old.avg_speed').isNull(), F.col('new.speed')).otherwise((F.col('new.speed') + F.col('old.avg_speed')) /2))
+    updated_df = updated_df.withColumn('max_speed', F.when(F.col('old.max_speed').isNull(), F.col('new.speed')).otherwise(F.when(F.col('new.speed') > F.col('old.max_speed'), F.col('new.speed')).otherwise(F.col('old.max_speed'))))
+    updated_df = updated_df.withColumn('idle_time', F.when(F.col('old.idle_time').isNull(), 1).otherwise(F.when(F.col('new.engine_status') == 'stoped', F.col('old.idle_time') + 1).otherwise(F.col('old.active_time'))))
+    updated_df = updated_df.withColumn('active_time', F.when(F.col('old.active_time').isNull(), 1).otherwise(F.when(F.col('new.engine_status') == 'running', F.col('old.active_time') + 1).otherwise(F.col('old.active_time'))))
 
-    # updated_df = updated_df.withColumn("avg_speed",  col("new.speed"))
+
+    # updated_df = updated_df.withColumn('active_time', F.when(F.col('new.engine_status') == 'running', F.col('old.active_time') + 1).otherwise(F.col('old.active_time')))
+    # updated_df = updated_df.withColumn('total_distance', F.when(F.col('old.total_distance').isNull(), 0).otherwise(F.col('old.total_distance') + F.sqrt((F.col('new.long') - F.col('old.long'))**2 + (F.col('new.lat') - F.col('old.lat'))**2)))
+    # updated_df = updated_df.withColumn('total_distance', F.when(F.col('old.total_distance').isNull(), 0).otherwise(F.col('old.total_distance') + 1))
 
     # add date_id column
     updated_df = updated_df.withColumn("date_id", col("new.trace_date").substr(1, 10).cast(IntegerType()))
 
     # select the columns to be saved in cassandra
-    updated_df = updated_df.select("new.thing_id", "date_id",  "avg_speed")
+    updated_df = updated_df.select("new.thing_id", "date_id",  "avg_speed", "max_speed", "idle_time", "active_time")
 
     # Start the query to print the output to the console
     # query = updated_df \

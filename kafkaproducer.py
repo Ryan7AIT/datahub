@@ -23,13 +23,24 @@ def produce_events(bootstrap_servers, topic):
             'engine_status': random.choice(['running', 'stopped'])
         }
 
-        producer.send(topic, value=str(event).encode('utf-8'))
+        event2 = {
+            'trace_id': str(random.randint(1, 100000)),
+            'thing_id': 338,
+            'trace_date': str(datetime.now()),
+            'long': random.uniform(-180, 180),
+            'lat': random.uniform(-90, 90),
+            'speed': random.randint(10, 100),
+            'engine_status': random.choice(['running', 'stopped'])
+        }
 
-        print(f"Produced event: {event}")
+        producer.send(topic, value=str(event).encode('utf-8'))
+        producer.send(topic, value=str(event2).encode('utf-8'))
+
+
 
         producer.flush()
 
-        sleep(0.5)
+        sleep(1)
 if __name__ == '__main__':
     bootstrap_servers = 'localhost:9092'  
     topic = 'iotevents'  
