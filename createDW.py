@@ -55,7 +55,7 @@ cur.execute('''
 
 # Create the second dimension table
 cur.execute('''
-    CREATE TABLE vehicle_dim (
+    CREATE TABLE thing (
          vehicle_id SERIAL PRIMARY KEY,
             vehicle_name VARCHAR(50),
             vehicle_type VARCHAR(50),

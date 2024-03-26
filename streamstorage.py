@@ -34,6 +34,34 @@ session.execute("""
                )
 
 
+# create analytic object table
+session.execute("""
+                
+                CREATE TABLE IF NOT EXISTS pfe.vehicle_performance (
+                idle_time int,
+                active_time int,
+                traveled_distance int,
+                avg_speed int,
+                max_speed int,
+                date_id int,
+                full_date text,
+                year int,
+                month int,
+                day int,
+                month_year text,
+                month_name text,
+                quarter text,
+                day_type text,
+                season text,
+                thing_id text,
+                thing_name text,
+                thing_type text,
+                thing_plate text,
+                PRIMARY KEY (thing_id)
+) ;
+                """
+                )
+
 
 
 # Close the connection

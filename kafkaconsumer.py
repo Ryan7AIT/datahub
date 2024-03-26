@@ -31,10 +31,23 @@ if __name__ == "__main__":
 
     # make the df in atbale format
     df = df.selectExpr("data.trace_id", "data.thing_id", "data.trace_date", "data.long", "data.lat", "data.speed", "data.engine_status")
+    
 
+    # # Read the existing data from Cassandra
+    # existing_df = spark.read \
+    #     .format("org.apache.spark.sql.cassandra") \
+    #     .options(table="vehicle_performance", keyspace="pfe") \
+    #     .load()
+    
+
+    # updated_df = df.alias('new').join(existing_df.alias('old'), 'thing_id', 'leftouter')
+
+    # Calculate the new measurements based on the event data and the current state
+    # TODO: Replace this with your actual calculation logic
+    # updated_df = updated_df.withColumn("avg_speed", col("old.avg_speed") + col("new.speed"))
 
     # Start the query to print the output to the console
-    # query = df \
+    # query = updated_df \
     #     .writeStream \
     #     .outputMode("append") \
     #     .format("console") \
