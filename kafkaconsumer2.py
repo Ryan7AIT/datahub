@@ -2,6 +2,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col
 from pyspark.sql.types import StructType, StringType, DoubleType,IntegerType
 from pyspark.sql import functions as F
+from datetime import datetime
 
 if __name__ == "__main__":
     spark = SparkSession.builder.appName("KafkaConsumer")\
@@ -63,7 +64,14 @@ if __name__ == "__main__":
     updated_df = updated_df.withColumn("date_id", col("new.trace_date").substr(1, 10).cast(IntegerType()))
 
     # select the columns to be saved in cassandra
-    updated_df = updated_df.select("new.thing_id", "date_id",  "avg_speed", "max_speed", "idle_time", "active_time")
+    current_date = datetime.now()
+
+    formatted_date = current_date.strftime('%A %Y-%m-%d')
+
+
+    updated_df = updated_df.withColumn("full_date", F.lit(formatted_date))
+
+    updated_df = updated_df.select("new.thing_id", "date_id",  "avg_speed", "max_speed", "idle_time", "active_time", "full_date")
 
     # Start the query to print the output to the console
     # query = updated_df \
@@ -92,3 +100,4 @@ if __name__ == "__main__":
         .start()
 
     query.awaitTermination()
+

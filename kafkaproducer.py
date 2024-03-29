@@ -14,8 +14,7 @@ def produce_events(bootstrap_servers, topic):
 
     while True:
         event = {
-            'trace_id': str(random.randint(1, 100000)),
-            'thing_id': 629,
+            'thing_id': 627,
             'trace_date': str(datetime.now()),
             'long': random.uniform(-180, 180),
             'lat': random.uniform(-90, 90),
@@ -24,8 +23,7 @@ def produce_events(bootstrap_servers, topic):
         }
 
         event2 = {
-            'trace_id': str(random.randint(1, 100000)),
-            'thing_id': 338,
+            'thing_id': 337,
             'trace_date': str(datetime.now()),
             'long': random.uniform(-180, 180),
             'lat': random.uniform(-90, 90),
