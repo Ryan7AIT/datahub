@@ -1129,11 +1129,13 @@ def get_thing(thing_id: Optional[int]=None, years: Optional[str] = None, months:
 
             r = [row[0] for row in result.collect()]
             r2 = [row[1] for row in result.collect()]
+            r3 = [row[2] for row in result.collect()]
+
 
                 # Stop the SparkSession
             # spark.stop()
             
-            return [r,r2]
+            return [r,r2,r3]
         
 
         else:
@@ -1194,9 +1196,10 @@ GROUP BY
         # Extracting years and distances into separate lists
         years = [entry[0] for entry in rows]
         distances = [entry[1] for entry in rows]
+        distances2 = [entry[2] for entry in rows]
 
         # Creating a list containing years and distances lists
-        result_list = [years, distances]
+        result_list = [years, distances,distances]
         return result_list
 
     else:
@@ -1229,9 +1232,11 @@ GROUP BY
         # Extracting years and distances into separate lists
         years = [entry[0] for entry in rows]
         distances = [entry[1] for entry in rows]
+        distances2 = [entry[2] for entry in rows]
+
 
         # Creating a list containing years and distances lists
-        result_list = [years, distances]
+        result_list = [years, distances,distances2]
         return result_list
 
 

@@ -53,10 +53,13 @@ session.execute("""
                 quarter text,
                 day_type text,
                 season text,
-                thing_id text,
+                thing_id int,
                 thing_name text,
                 thing_type text,
                 thing_plate text,
+                latitute double,
+                longitude double,
+                trace_date text,
                 PRIMARY KEY (thing_id)
 ) ;
                 """

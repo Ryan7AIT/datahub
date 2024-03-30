@@ -16,29 +16,46 @@ def produce_events(bootstrap_servers, topic):
         event = {
             'thing_id': 627,
             'trace_date': str(datetime.now()),
-            'long': random.uniform(-180, 180),
-            'lat': random.uniform(-90, 90),
+            'longitude': random.uniform(-180, 180),
+            'latitute': random.uniform(-90, 90),
             'speed': random.randint(10, 100),
-            'engine_status': random.choice(['running', 'stopped'])
+            # 'engine_status': random.choice(['running', 'stopped']),
+            'engine_status': random.choice('stopped'),
+
+            
         }
 
         event2 = {
             'thing_id': 337,
             'trace_date': str(datetime.now()),
-            'long': random.uniform(-180, 180),
-            'lat': random.uniform(-90, 90),
+            'longitude': random.uniform(-180, 180),
+            'latitute': random.uniform(-90, 90),
+            'speed': random.randint(10, 100),
+            'engine_status': random.choice(['running', 'stopped'])
+        }
+
+        event3 = {
+            'thing_id': 629,
+            'trace_date': str(datetime.now()),
+            'longitude': random.uniform(-180, 180),
+            'latitute': random.uniform(-90, 90),
             'speed': random.randint(10, 100),
             'engine_status': random.choice(['running', 'stopped'])
         }
 
         producer.send(topic, value=str(event).encode('utf-8'))
         producer.send(topic, value=str(event2).encode('utf-8'))
+        producer.send(topic, value=str(event3).encode('utf-8'))
+
 
 
 
         producer.flush()
 
         sleep(1)
+
+        print('Events produced successfully!')
+        print(event)
 if __name__ == '__main__':
     bootstrap_servers = 'localhost:9092'  
     topic = 'iotevents'  

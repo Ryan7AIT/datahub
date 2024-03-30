@@ -10,8 +10,8 @@ def get_street_address(latitude, longitude):
     state = address.get('state', '')
     return address
 # Example usage
-# latitude = 36.685685
-# longitude = 3.354008
+latitude = 36.685685
+longitude = 3.354008
 # street = get_street_address(latitude, longitude)
 # # print(f"Street: {street}")
 # # print(f"City: {city}")
@@ -19,44 +19,44 @@ def get_street_address(latitude, longitude):
 
 # print(street)
 
-from pyspark.sql import functions as F
 
-from pyspark.sql import SparkSession
+from datetime import datetime
 
-# Create a SparkSession
-spark = SparkSession.builder \
-    .appName("Python Spark SQL") \
-    .config('spark.jars.packages', 'com.datastax.spark:spark-cassandra-connector_2.12:3.1.0')\
-    .getOrCreate()
+# Parse the timestamps
+old_time = datetime.strptime('2024-03-30 02:48:47.486479', '%Y-%m-%d %H:%M:%S.%f')
+new_time = datetime.strptime('2024-03-30 02:48:49.486479', '%Y-%m-%d %H:%M:%S.%f')
 
-# Load the Cassandra table into a DataFrame
-cassandra_df = spark.read \
-    .format("org.apache.spark.sql.cassandra") \
-    .options(table="vehicle_performance", keyspace="pfe") \
-    .load()
+# Calculate the difference in hours
+# time_diff_hours = (new_time - old_time).total_seconds() / 3600
 
-# Load the PostgreSQL table into a DataFrame
-# postgres_df = spark.read \
-#     .format("jdbc") \
-#     .option("url", "jdbc:postgresql://localhost:5432/your_database") \
-#     .option("dbtable", "postgres_table") \
-#     .option("user", "your_username") \
-#     .option("password", "your_password") \
-#     .option("driver", "org.postgresql.Driver") \
-#     .load()
+# print(time_diff_hours)
 
-# Query for total_distance for each date
-# cassandra_result = cassandra_df.sum("avg_speed").collect()
-cassandra_result = cassandra_df.agg(F.sum("avg_speed")).collect()
+from math import radians, sin, cos, sqrt, atan2
 
-print(cassandra_result)
-# postgres_result = postgres_df.groupBy("date").sum("total_distance").collect()
+def calculate_distance(lat1, lon1, lat2, lon2):
+    # approximate radius of earth in km
+    R = 6371.0
 
-# Combine results
-# combined_result = cassandra_result + postgres_result
+    lat1 = radians(lat1)
+    lon1 = radians(lon1)
+    lat2 = radians(lat2)
+    lon2 = radians(lon2)
 
-# Create two lists: one for the distances and one for the dates
-# distances = [row[1] for row in combined_result]
-# dates = [row[0] for row in combined_result]
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
 
-# Now distances contains the total_distance for each date and dates contains the corresponding dates
+    a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+
+    distance = R * c
+    return distance
+
+# Test the function
+lat1 = 52.2296756
+lon1 = 21.0122287
+lat2 = 52.406374
+lon2 = 16.9251681
+
+print(calculate_distance(lat1, lon1, lat2, lon2))
+
+

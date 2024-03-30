@@ -73,15 +73,11 @@ cur.execute('''
 cur.execute('''
     CREATE TABLE location_dim (
         location_id SERIAL PRIMARY KEY,
-            latitude FLOAT,
-            longitude FLOAT,
-            altitude FLOAT,
-            country VARCHAR(50),
-            city VARCHAR(50),
-            street VARCHAR(50),
-            postal_code VARCHAR(50),
-            region VARCHAR(50)
-    )
+            commune_id INT,
+            commune_designation varchar(50),
+            wilaya_id INT,
+            wilaya_designation varchar(50),
+         )
 ''')
 
 
@@ -95,6 +91,8 @@ cur.execute('''
                 )
 ''')
 
+
+#
 
 
 # Create the fact table
