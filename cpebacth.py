@@ -1,4 +1,5 @@
 import psycopg2
+import datetime
 import mysql.connector
 
 # fill the thing dimmnsion table
@@ -38,20 +39,45 @@ if result is not None:
     print('Last thing_id:', last_thing_id)
 else:
     last_thing_id = 0
-    print('No data found in df_last_row')
+    print('No data found in df_last_row of thing')
 
 # Create a cursor object for MySQL
 cursor_mysql = cnx.cursor()
 
-cursor_mysql.execute(f"SELECT t.thing_id, tt.thing_type_designation, t.thing_designation, t.thing_matricule FROM geopfe.thing t, geopfe.thing_type tt WHERE t.thing_type_id = tt.thing_type_id AND t.thing_id > {last_thing_id}")
+cursor_mysql.execute(f"""
+                        SELECT
+                            t.thing_id,
+                            tt.thing_type_designation,
+                            t.thing_designation,
+                            t.thing_matricule as thing_plate,
+                            t.entreprise_id AS company_id,
+                            t.thing_group_id as group_id,
+                            t.thing_type_id as type_id,
+                         	tg.thing_group_designation
+
+                     
+                        FROM
+                            geopfe.thing t,
+                            geopfe.thing_type tt,
+                            thing_group tg
+                        WHERE
+                            t.thing_type_id = tt.thing_type_id
+                            AND tg.thing_group_id = t.thing_group_id
+
+                        AND t.thing_id > {last_thing_id}
+                                        """)
+
 
 rows = cursor_mysql.fetchall()
 
 
+
+
+
 # insert this row into the thing_dim table
 insert_query = """
-INSERT INTO thing_dim (thing_id, thing_type, thing_name, thing_plate)
-VALUES (%s, %s, %s, %s)
+INSERT INTO thing_dim (thing_id, thing_type_designation, thing_designation, thing_plate, company_id, group_id, type_id)
+VALUES (%s, %s, %s, %s, %s, %s, %s)
 """
 cursor_postgres.executemany(insert_query, rows)
 
@@ -63,7 +89,7 @@ print('done with thing dim')
 # second dimmension table date_dim
 
 # Read the last row from the date_dim table
-cursor_postgres.execute("SELECT date_id FROM date_dim ORDER BY date_id DESC LIMIT 1")
+cursor_postgres.execute("SELECT full_date FROM date_dim ORDER BY date_id DESC LIMIT 1")
 #check if the cursor result is not empty
 
 
@@ -72,16 +98,50 @@ result = cursor_postgres.fetchone()
 
 if result is not None:
     last_date_id = result[0]
+    print(last_date_id)
 else:
-    last_date_id = 0
-    print('No data found in df_last_row')
+    current_date = datetime.date.today().strftime("%Y-%m-%d")
+    last_date_id = '2020-01-01'
+    print('No data found in df_last_row date dim')
 
 # Create a cursor object for MySQL
 cursor_mysql = cnx.cursor()
 
-cursor_mysql.execute(f"SELECT DISTINCT  date_insertion_day AS full_date, YEAR(date_insertion_day) AS year, MONTH(date_insertion_day) AS month, DAY(date_insertion_day) AS day, DATE_FORMAT(date_insertion_day, '%Y-%m') AS month_year, DATE_FORMAT(date_insertion_day, '%M') AS month_name, CONCAT(YEAR(date_insertion_day), '-Q', QUARTER(date_insertion_day)) AS quarter, CASE WHEN DAYOFWEEK(date_insertion_day) IN (1, 7) THEN 'Weekend' ELSE 'Weekday' END AS day_type, CASE WHEN MONTH(date_insertion_day) IN (1, 2, 12) THEN 'Winter' WHEN MONTH(date_insertion_day) IN (3, 4, 5) THEN 'Spring' WHEN MONTH(date_insertion_day) IN (6, 7, 8) THEN 'Summer' ELSE 'Fall' END AS season FROM geopfe.trace_week where date_insertion_day > {last_date_id}")
+cursor_mysql.execute(f"""
+                     SELECT DISTINCT
+                        date_insertion_day AS full_date,
+                        YEAR(date_insertion_day) AS year,
+                        MONTH(date_insertion_day) AS month,
+                        DAY(date_insertion_day) AS day,
+                        DATE_FORMAT(date_insertion_day, '%Y-%m') AS month_year,
+                        DATE_FORMAT(date_insertion_day, '%M') AS month_name,
+                        CONCAT(YEAR(date_insertion_day), '-Q', QUARTER(date_insertion_day)) AS quarter,
+                        CASE WHEN DAYOFWEEK(date_insertion_day)
+                        IN(1, 7) THEN
+                            'Weekend'
+                        ELSE
+                            'Weekday'
+                        END AS day_type,
+                        CASE WHEN MONTH(date_insertion_day)
+                        IN(1, 2, 12) THEN
+                            'Winter'
+                        WHEN MONTH(date_insertion_day)
+                        IN(3, 4, 5) THEN
+                            'Spring'
+                        WHEN MONTH(date_insertion_day)
+                        IN(6, 7, 8) THEN
+                            'Summer'
+                        ELSE
+                            'Fall'
+                        END AS season
+                            FROM
+                                geopfe.trace_week
+                            WHERE
+                                date_insertion_day > '{last_date_id}'
+                     """)
 
 rows = cursor_mysql.fetchall()
+
 
 
 
@@ -184,7 +244,7 @@ FROM (
         trace_week t
     JOIN 
         date_dim d ON t.trace_date_day = d.full_date
-        WHERE      thing_id <= 4333 AND date_id > {last_date_id}
+        WHERE      thing_id <= 4333 AND t.date_insertion_day > {last_date_id}
 ) AS subquery
 WHERE 
     prev_latitude IS NOT NULL

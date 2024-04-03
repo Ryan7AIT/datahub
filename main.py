@@ -12,6 +12,16 @@ from pyspark.sql.functions import sum as _sum
 from cassandra.query import dict_factory
 import datetime
 from pyspark.sql import functions as F
+from geopy.geocoders import Nominatim
+
+def get_street_address(p):
+    latitude , longitude = p.split(',')
+    geolocator = Nominatim(user_agent="my_app")
+    location = geolocator.reverse((latitude, longitude))
+    address = location.raw['address']
+
+    return address.get('town'), address.get('state'), address.get('country')
+
 
 app = FastAPI()
 
@@ -491,14 +501,14 @@ def search_thing(thing_id: str) -> Union[list, None]:
     select_query = f"""
     SELECT
         thing_id,
-        thing_name
+        thing_designation
     FROM
         thing_dim t
     WHERE
   
-     thing_name like '%{thing_id}%'
+     thing_designation like '%{thing_id}%'
     GROUP BY
-        t.thing_name,
+        t.thing_designation,
         thing_id
     """
     cursor_postgres.execute(select_query)
@@ -641,7 +651,65 @@ def get_realtime_data(thing_id: str) -> Union[list, None]:
 
 
 
+# get thing types
+@app.get("/get_thing_types")
+def get_thing_types():
+    """
+    Endpoint to get all thing types.
 
+    Returns:
+        list: A list of all thing types.
+    """
+    select_query = """
+SELECT DISTINCT
+	type_id,
+	thing_type_designation
+FROM
+	thing_dim
+    """
+    cursor_postgres.execute(select_query)
+    rows = cursor_postgres.fetchall()
+
+    # retutn a dict
+    data = []
+    for row in rows:
+        data.append({
+            "type_id": row[0],
+            "thing_type_designation": row[1]
+        })
+
+
+    return data
+
+# get thing groups
+@app.get("/get_thing_groups")
+def get_thing_groups():
+    """
+    Endpoint to get all thing groups.
+
+    Returns:
+        list: A list of all thing groups.
+    """
+    select_query = """
+SELECT DISTINCT
+    group_id
+    FROM
+    thing_dim
+    limit 10
+    """
+    cursor_postgres.execute(select_query)
+    rows = cursor_postgres.fetchall()
+
+    # retutn a dict
+    data = []
+    for row in rows:
+        data.append({
+            "group_id": row[0],
+            "thing_group_designation": 'group name'
+        })
+
+
+    return data
 
 
 
@@ -774,7 +842,7 @@ def get_test_data(thing_id: Optional[int]=None) -> Union[list, None]:
 
 
 @app.get("/query/distancea2")
-def get_distance(thing_id: Optional[int]=None, years: Optional[str] = None, months: Optional[str] = None, d1: Optional[str] = None, d2: Optional[str] = None) -> Union[list, None]:
+def get_distance(thing_id: Optional[int]=None, group_id: Optional[int]=None, type_id: Optional[int]=None,  years: Optional[str] = None, months: Optional[str] = None, d1: Optional[str] = None, d2: Optional[str] = None) -> Union[list, None]:
     """
     Endpoint to get data for a specific thing.
 
@@ -926,6 +994,10 @@ def get_distance(thing_id: Optional[int]=None, years: Optional[str] = None, mont
 
         if thing_id:
             select_query += f" AND v.thing_id = {thing_id} group by \"day\", full_date"
+        elif group_id:
+            select_query += f" AND t.group_id = {group_id} group by \"day\", full_date"
+        elif type_id:
+            select_query += f" AND t.type_id = {type_id} group by \"day\", full_date"
         else:
             select_query += " group by \"day\", full_date"
 
@@ -959,6 +1031,10 @@ def get_distance(thing_id: Optional[int]=None, years: Optional[str] = None, mont
 
         if thing_id:
             select_query += f" AND v.thing_id = {thing_id} group by \"month\", \"month_name\""
+        elif group_id:
+            select_query += f" AND t.group_id = {group_id} group by \"month\", \"month_name\""
+        elif type_id:
+            select_query += f" AND t.type_id = {type_id} group by \"month\", \"month_name\""
         else:
             select_query += " group by \"month\", \"month_name\""
 
@@ -990,6 +1066,10 @@ def get_distance(thing_id: Optional[int]=None, years: Optional[str] = None, mont
 
         if thing_id :
             select_query += f" AND v.thing_id = {thing_id} group by \"year\""
+        elif group_id:
+            select_query += f" AND t.group_id = {group_id} group by \"year\""
+        elif type_id:
+            select_query += f" AND t.type_id = {type_id} group by \"year\""
         else:
             select_query += " group by \"year\""
 
@@ -1007,7 +1087,7 @@ def get_distance(thing_id: Optional[int]=None, years: Optional[str] = None, mont
 
 
 @app.get("/query/time2")
-def get_thing(thing_id: Optional[int]=None, years: Optional[str] = None, months: Optional[str] = None, d1: Optional[str] = None, d2: Optional[str] = None) -> Union[list, None]:
+def get_thing(thing_id: Optional[int]=None, group_id: Optional[int]=None, type_id: Optional[int]=None, years: Optional[str] = None, months: Optional[str] = None, d1: Optional[str] = None, d2: Optional[str] = None) -> Union[list, None]:
     """
     Endpoint to get data for a specific thing.
 
@@ -1188,8 +1268,16 @@ GROUP BY
 
         if thing_id:
             select_query += f" AND v.thing_id = {thing_id} group by \"month\", \"month_name\""
+
+        elif group_id:
+            select_query += f" AND t.group_id = {group_id} group by \"month\", \"month_name\""
+        elif type_id:
+            select_query += f" AND t.type_id = {type_id} group by \"month\", \"month_name\""
+
         else:
             select_query += " group by \"month\", \"month_name\""
+
+
 
         cursor_postgres.execute(select_query)
         rows = cursor_postgres.fetchall()
@@ -1222,10 +1310,16 @@ GROUP BY
 
         if thing_id :
             select_query += f" AND v.thing_id = {thing_id} group by \"year\""
+
+
+        elif group_id:
+            select_query += f" AND t.group_id = {group_id} group by \"year\""
+        
+        elif type_id:
+            select_query += f" AND t.type_id = {type_id} group by \"year\""
+
         else:
             select_query += " group by \"year\""
-
-
 
         cursor_postgres.execute(select_query)
         rows = cursor_postgres.fetchall()
@@ -1243,7 +1337,7 @@ GROUP BY
 
 
 @app.get("/query/speed2")
-def get_speed(thing_id: Optional[int]=None, years: Optional[str] = None, months: Optional[str] = None, d1: Optional[str] = None, d2: Optional[str] = None) -> Union[list, None]:
+def get_speed(thing_id: Optional[int]=None, group_id: Optional[int]=None,  type_id: Optional[int]=None,    years: Optional[str] = None, months: Optional[str] = None, d1: Optional[str] = None, d2: Optional[str] = None) -> Union[list, None]:
     """
     Endpoint to get data for a specific thing.
 
@@ -1422,6 +1516,12 @@ def get_speed(thing_id: Optional[int]=None, years: Optional[str] = None, months:
 
         if thing_id:
             select_query += f" AND v.thing_id = {thing_id} group by \"month\", \"month_name\""
+
+        elif group_id:
+            select_query += f" AND t.group_id = {group_id} group by \"month\", \"month_name\""
+
+        elif type_id:
+            select_query += f" AND t.type_id = {type_id} group by \"month\", \"month_name\""
         else:
             select_query += " group by \"month\", \"month_name\""
 
@@ -1453,6 +1553,11 @@ def get_speed(thing_id: Optional[int]=None, years: Optional[str] = None, months:
 
         if thing_id :
             select_query += f" AND v.thing_id = {thing_id} group by \"year\""
+
+        elif group_id:
+            select_query += f" AND t.group_id = {group_id} group by \"year\""
+        elif type_id:
+            select_query += f" AND t.type_id = {type_id} group by \"year\""
         else:
             select_query += " group by \"year\""
 
@@ -1468,7 +1573,52 @@ def get_speed(thing_id: Optional[int]=None, years: Optional[str] = None, months:
         result_list = [years, distances,max_speed]
         return result_list
 
-        
+# def get_speed(thing_id: Optional[int]=None, years: Optional[str] = None, months: Optional[str] = None, d1: Optional[str] = None, d2: Optional[str] = None) -> Union[list, None]:
+
+
+# route to get 10 jounies
+@app.get('/qa')
+def get_journies(thing_id: Optional[int]=None,years: Optional[str] = None, months: Optional[str] = None, d1: Optional[str] = None, d2: Optional[str] = None) -> Union[list, None]:
+    """
+        get the last 10 journeies
+    """
+
+    select_query = f"""
+            SELECT
+            thing_id,
+            active_time,
+            avg_speed,
+            max_speed,
+            start_point,
+            end_point,
+            start_time,
+            end_time,
+            jd.path
+        FROM
+            journey j,
+            journey_dim jd
+        WHERE
+            jd.journey_id = j.journey_id
+        LIMIT 5"""
+
+    cursor_postgres.execute(select_query)
+    rows = cursor_postgres.fetchall()
+    # make a dict from that list
+
+    result = []
+    for row in rows:
+        result.append({
+            "thing_id": row[0],
+            "active_time": row[1],
+            "avg_speed": row[2],
+            "max_speed": row[3],
+            "start_point": row[4],
+            "end_point": row[5],
+            "start_time": row[6],
+            "end_time": row[7],
+            "path": row[8]
+        })
+    return result
 
 
 # UPDATE vehicle_performance

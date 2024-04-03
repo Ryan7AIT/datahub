@@ -20,8 +20,8 @@ if __name__ == "__main__":
         .add("trace_id", StringType()) \
         .add("thing_id", IntegerType()) \
         .add("trace_date", StringType()) \
-        .add("long", DoubleType()) \
-        .add("lat", DoubleType()) \
+        .add("longitude", DoubleType()) \
+        .add("latitute", DoubleType()) \
         .add("speed", IntegerType()) \
         .add("engine_status", StringType())
 
@@ -30,7 +30,11 @@ if __name__ == "__main__":
 
 
     # make the df in atbale format
-    df = df.selectExpr("data.trace_id", "data.thing_id", "data.trace_date", "data.long", "data.lat", "data.speed", "data.engine_status")
+    df = df.selectExpr("data.trace_id", "data.thing_id", "data.trace_date", "data.longitude", "data.latitute", "data.speed", "data.engine_status")
+
+    #rename a cloumn
+    df = df.withColumnRenamed("latitute","lat")
+    df = df.withColumnRenamed("longitude","long")
     
 
     # # Read the existing data from Cassandra

@@ -1,62 +1,196 @@
+import mysql.connector
+from datetime import datetime
+import psycopg2
 from geopy.geocoders import Nominatim
 
-def get_street_address(latitude, longitude):
+
+def get_street_address(p):
+    latitude , longitude = p.split(',')
     geolocator = Nominatim(user_agent="my_app")
     location = geolocator.reverse((latitude, longitude))
     address = location.raw['address']
 
-    street = address.get('road', '')
-    city = address.get('city', '')
-    state = address.get('state', '')
-    return address
-# Example usage
-latitude = 36.685685
-longitude = 3.354008
-# street = get_street_address(latitude, longitude)
-# # print(f"Street: {street}")
-# # print(f"City: {city}")
-# # print(f"State: {state}")
+    return address.get('town'), address.get('state'), address.get('country')
 
-# print(street)
+# Create a connection to the MySQL database
+cnx = mysql.connector.connect(user='root', password='', host='localhost', database='geopfe')
+cursor = cnx.cursor()
 
+# Create a connection to the PostgreSQL database
+cnx2 = psycopg2.connect(
+    host="localhost",
+    port="5432",
+    database="geopfe",
+    user="postgres",
+    password="ryqn"
+)
 
-from datetime import datetime
+cursor2 = cnx2.cursor()
 
-# Parse the timestamps
-old_time = datetime.strptime('2024-03-30 02:48:47.486479', '%Y-%m-%d %H:%M:%S.%f')
-new_time = datetime.strptime('2024-03-30 02:48:49.486479', '%Y-%m-%d %H:%M:%S.%f')
+# Create the journey_dim table
+cursor2.execute('''
+    CREATE TABLE IF NOT EXISTS journey_dim (
+        journey_id INT PRIMARY KEY,
+        start_point VARCHAR(255),
+        end_point VARCHAR(255),
+        start_time TIMESTAMP,
+        end_time TIMESTAMP,
+        path TEXT
+    )
+''')
 
-# Calculate the difference in hours
-# time_diff_hours = (new_time - old_time).total_seconds() / 3600
-
-# print(time_diff_hours)
-
-from math import radians, sin, cos, sqrt, atan2
-
-def calculate_distance(lat1, lon1, lat2, lon2):
-    # approximate radius of earth in km
-    R = 6371.0
-
-    lat1 = radians(lat1)
-    lon1 = radians(lon1)
-    lat2 = radians(lat2)
-    lon2 = radians(lon2)
-
-    dlon = lon2 - lon1
-    dlat = lat2 - lat1
-
-    a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
-    c = 2 * atan2(sqrt(a), sqrt(1 - a))
-
-    distance = R * c
-    return distance
-
-# Test the function
-lat1 = 52.2296756
-lon1 = 21.0122287
-lat2 = 52.406374
-lon2 = 16.9251681
-
-print(calculate_distance(lat1, lon1, lat2, lon2))
+#create table journey
+cursor2.execute("""
+CREATE TABLE IF NOT EXISTS journey (
+    id SERIAL PRIMARY KEY,
+    journey_id INT,
+    thing_id INT,
+    traveled_distance FLOAT,
+    idle_time FLOAT,
+    active_time FLOAT,
+    avg_speed FLOAT,
+    max_speed FLOAT,
+    date_id INT
+);
+""")
 
 
+# Get all distinct thing_ids
+cursor2.execute("SELECT MAX(date_id)  FROM journey ")
+last_date = cursor2.fetchall()
+
+print('last_date:', last_date[0][0])
+
+
+# Get all distinct thing_ids
+cursor.execute("SELECT DISTINCT thing_id FROM trace_week where thing_id < 500")
+thing_ids = cursor.fetchall()
+
+# Initialize an empty list to store all journeys
+all_journeys = []
+journey_id = 0
+
+# Loop over all thing_ids
+for thing_id_tuple in thing_ids:
+    thing_id = thing_id_tuple[0]
+    # Get all rows for this thing_id
+    cursor.execute(f"""
+                   
+SELECT
+	trace_date,
+	thing_id,
+	engine_status,
+	latitude,
+	longitude,
+	journey,
+	speed,
+	date_id
+FROM
+	trace_week
+	JOIN date_dim d ON trace_date_day = full_date
+WHERE
+	thing_id = %s AND date_id > '{last_date[0][0]} and thing_id < 500' and date_id < '2024-02-29'
+
+GROUP BY
+	thing_id,
+	date_id,
+	trace_date,
+	engine_status,
+	latitude,
+	longitude,
+	journey,
+	speed
+ORDER BY
+	trace_date
+                   
+                   """, (thing_id,))
+    rows = cursor.fetchall()
+
+
+
+
+
+
+
+    # Initialize variables
+    start_trace_date = None
+    start_journey = None
+    path = ''
+    idle_time = 0
+    active_time = 0
+
+    # Initialize an empty list to store the journeys for this thing_id
+    journeys = []
+
+    # Loop over all rows
+    for i in range(len(rows)):
+        row = rows[i]
+        if i > 0 and row[2] == 1 and rows[i-1][2] == 0:
+            start_trace_date = row[0]
+            start_journey = row[5]
+            path = str(row[3]) + ',' + str(row[4])
+            idle_time = 0
+            active_time = 0
+            journey_id += 1
+        elif i > 0 and row[2] == 0 and rows[i-1][2] == 1 and start_trace_date is not None:
+            date_id = row[7]
+            path += ';' + str(row[3]) + ',' + str(row[4])
+            end_date = row[0]
+            if start_journey is not None:
+                active_time = (datetime.strptime(str(end_date), "%Y-%m-%d %H:%M:%S") - datetime.strptime(str(start_trace_date), "%Y-%m-%d %H:%M:%S")).total_seconds() / 60
+                cursor.execute('SELECT AVG(speed), MAX(speed) FROM trace_week WHERE thing_id = %s AND trace_date >= %s AND trace_date <= %s', (thing_id, start_trace_date, end_date))
+                avg_speed, max_speed = cursor.fetchone()
+
+                start_point = get_street_address(path.split(';')[0])
+                end_point = get_street_address(path.split(';')[-1])
+                cursor2.execute('INSERT INTO journey_dim (journey_id, start_point, end_point, start_time, end_time, path) VALUES (%s, %s, %s, %s, %s, %s)', (journey_id, start_point, end_point, start_trace_date, end_date, path))
+
+                traveled_distance = row[5] - start_journey
+                journeys.append((journey_id, thing_id, traveled_distance, idle_time, active_time , avg_speed, max_speed,date_id))
+            start_trace_date = None
+            start_journey = None
+            path = ''
+
+      
+    all_journeys.extend(journeys)
+
+# Print all journeys
+# for journey in all_journeys:
+#     print(journey)
+
+print('journeys:', len(all_journeys))
+
+
+
+#create table journey
+cursor2.execute("""
+CREATE TABLE IF NOT EXISTS journey (
+    id SERIAL PRIMARY KEY,
+    journey_id INT,
+    thing_id INT,
+    traveled_distance FLOAT,
+    idle_time FLOAT,
+    active_time FLOAT,
+    avg_speed FLOAT,
+    max_speed FLOAT,
+    date_id INT
+);
+""")
+
+# Insert the rows into the PostgreSQL table
+for journey in all_journeys:
+    insert_query = """
+    INSERT INTO journey (journey_id, thing_id, traveled_distance, idle_time, active_time, avg_speed, max_speed, date_id)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
+    """
+    cursor2.execute(insert_query, journey)
+
+
+
+
+# Commit the transaction
+cnx2.commit()
+
+
+# Close the connection to the MySQL database
+cnx.close()

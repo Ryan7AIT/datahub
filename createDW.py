@@ -53,21 +53,7 @@ cur.execute('''
 
 
 
-# Create the second dimension table
-cur.execute('''
-    CREATE TABLE thing (
-         vehicle_id SERIAL PRIMARY KEY,
-            vehicle_name VARCHAR(50),
-            vehicle_type VARCHAR(50),
-            vehicle_model VARCHAR(50),
-            vehicle_color VARCHAR(50),
-            vehicle_year INT,
-            vehicle_brand VARCHAR(50) ,
-            car_plate VARCHAR(50),
-            vehicle_owner VARCHAR(50),
-            carburant_type VARCHAR(50)
-    )
-''')
+
 
 # Create the third dimension table
 cur.execute('''
@@ -76,22 +62,28 @@ cur.execute('''
             commune_id INT,
             commune_designation varchar(50),
             wilaya_id INT,
-            wilaya_designation varchar(50),
+            wilaya_designation varchar(50)
          )
 ''')
 
 
 cur.execute('''
             CREATE TABLE thing_dim (
-             thing_id SERIAL PRIMARY KEY,
-            thing_type VARCHAR(50),
-            thing_name TEXT,
-            thing_plate VARCHAR(50)
+            thing_id SERIAL PRIMARY KEY,
+            thing_type_designation VARCHAR(150),
+            thing_designation VARCHAR(150),
+            thing_plate VARCHAR(150),
+            company_id bigint,
+            group_id bigint,
+            type_id INT,
+            group_name VARCHAR(150)
+
+            
             
                 )
 ''')
 
-
+                   
 #
 
 

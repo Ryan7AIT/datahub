@@ -1,31 +1,13 @@
-from pyspark.sql import SparkSession
+from datetime import datetime
+from datetime import datetime
+from datetime import datetime
+def calculate_hour_difference(start_date, end_date):
+    start_datetime = datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S")
+    end_datetime = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S")
+    hour_difference = (end_datetime - start_datetime).total_seconds() /60 
+    return hour_difference
 
-# Create a SparkSession
-spark = SparkSession.builder \
-    .appName("PostgreSQL Connection") \
-    .config("spark.jars", "//Users/mac/Downloads/postgresql-42.7.3.jar") \
-    .getOrCreate()
-
-
-
-
-# Create a simple DataFrame
-data = [("John", 25), ("Alice", 30), ("Bob", 35)]
-columns = ["name", "age"]
-df = spark.createDataFrame(data, columns)
-
-# Write data to a PostgreSQL table
-df.write \
-    .format("jdbc") \
-    .option("url", "jdbc:postgresql://localhost:5432/geopfe") \
-    .option("dbtable", "new_table") \
-    .option("user", "postgres") \
-    .option("password", "ryqn") \
-    .option("driver", "org.postgresql.Driver") \
-    .mode("overwrite") \
-    .save()
-
-
-
-# Close the SparkSession
-spark.stop()
+start_date = "2024-02-28 02:12:45"
+end_date = "2024-02-28 02:30:34"
+difference_in_hours = calculate_hour_difference(start_date, end_date)
+print("The difference in hours is:", difference_in_hours)
