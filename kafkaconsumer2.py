@@ -1,10 +1,13 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col
 from pyspark.sql.types import StructType, StringType, DoubleType,IntegerType
+from pyspark.sql.functions import udf
 from pyspark.sql import functions as F
 from datetime import datetime
 from math import radians, sin, cos, sqrt, atan2
 from pyspark.sql.types import FloatType
+import pickle
+import numpy as np
 
 if __name__ == "__main__":
     spark = SparkSession.builder.appName("KafkaConsumer")\
@@ -70,17 +73,17 @@ if __name__ == "__main__":
 
     # Define the haversine function
     def haversine(lat1, lon1, lat2, lon2):
-        R = 6371.0
-        lat1 = radians(lat1)
-        lon1 = radians(lon1)
-        lat2 = radians(lat2)
-        lon2 = radians(lon2)
-        dlon = lon2 - lon1
-        dlat = lat2 - lat1
-        a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
-        c = 2 * atan2(sqrt(a), sqrt(1 - a))
-        distance = R * c
-        return distance
+        # R = 6371.0
+        # lat1 = radians(lat1)
+        # lon1 = radians(lon1)
+        # lat2 = radians(lat2)
+        # lon2 = radians(lon2)
+        # dlon = lon2 - lon1
+        # dlat = lat2 - lat1
+        # a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
+        # c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        # distance = R * c
+        return 1
 
     # updated_df = updated_df.withColumn('active_time', F.when(F.col('new.engine_status') == 'running', F.col('old.active_time') + 1).otherwise(F.col('old.active_time')))
     # updated_df = updated_df.withColumn('total_distance', F.when(F.col('old.total_distance').isNull(), 0).otherwise(F.col('old.total_distance') + F.sqrt((F.col('new.long') - F.col('old.long'))**2 + (F.col('new.lat') - F.col('old.lat'))**2)))
@@ -125,6 +128,20 @@ if __name__ == "__main__":
 
     updated_df = updated_df.select("new.thing_id", "date_id",  "avg_speed", "max_speed", "idle_time", "active_time", "full_date","new.longitude","new.latitute","new.trace_date","traveled_distance")
 
+        # Load the model from the file
+    with open('speeding_model.pkl', 'rb') as file:
+        model = pickle.load(file)
+
+    # Define a user-defined function that applies the model
+    @udf(IntegerType())
+    def predict_speeding(speed):
+        prediction = model.predict(np.array([[speed]]))
+        return int(prediction[0])
+
+    # Apply the model to the incoming DataFrame
+    updated_df = updated_df.withColumn('is_speeding', predict_speeding(updated_df['max_speed']))
+
+
     # Start the query to print the output to the console
     # query = updated_df \
     #     .writeStream \
@@ -143,6 +160,7 @@ if __name__ == "__main__":
           .mode("append") \
           .save()
 
+    
     # Write the streaming data to Cassandra
     query = updated_df \
         .writeStream \

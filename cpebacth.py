@@ -28,6 +28,8 @@ cursor_postgres = conn.cursor()
 # Read the last row from the thing_dim table
 cursor_postgres.execute("SELECT thing_id FROM thing_dim ORDER BY thing_id DESC LIMIT 1")
 #check if the cursor result is not empty
+
+
     
 
 result = cursor_postgres.fetchone()
@@ -73,16 +75,19 @@ rows = cursor_mysql.fetchall()
 
 
 
+# check if rows is not empty
+if rows:
+    print('Rows:')
 
-# insert this row into the thing_dim table
-insert_query = """
-INSERT INTO thing_dim (thing_id, thing_type_designation, thing_designation, thing_plate, company_id, group_id, type_id)
-VALUES (%s, %s, %s, %s, %s, %s, %s)
-"""
-cursor_postgres.executemany(insert_query, rows)
+    # insert this row into the thing_dim table
+    insert_query = """
+    INSERT INTO thing_dim (thing_id, thing_type_designation, thing_designation, thing_plate, company_id, group_id, type_id,group_name)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+    """
+    cursor_postgres.executemany(insert_query, rows)
 
-#commit changes 
-conn.commit()
+    #commit changes 
+    conn.commit()
 
 print('done with thing dim')
 

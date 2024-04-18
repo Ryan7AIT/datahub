@@ -151,6 +151,9 @@ ORDER BY
             start_journey = None
             path = ''
 
+        if i > 0 and rows[i-1][2] == 1:
+            path += ';' + str(row[3]) + ',' + str(row[4])
+
       
     all_journeys.extend(journeys)
 

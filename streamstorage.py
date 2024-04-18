@@ -28,6 +28,9 @@ session.execute("""
     lat double,
     speed int,
     engine_status text,
+    oil_value int,
+    fuel_liters int,
+    fuel_percent int,
     PRIMARY KEY (thing_id, trace_date)
 ) WITH CLUSTERING ORDER BY (trace_date DESC);
                 """
