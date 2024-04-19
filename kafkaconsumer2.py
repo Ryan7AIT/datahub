@@ -8,6 +8,10 @@ from math import radians, sin, cos, sqrt, atan2
 from pyspark.sql.types import FloatType
 import pickle
 import numpy as np
+from pyspark.sql.functions import lit
+from keras.models import load_model
+from pyspark.sql.functions import pandas_udf, PandasUDFType
+import pandas as pd
 
 if __name__ == "__main__":
     spark = SparkSession.builder.appName("KafkaConsumer")\
@@ -30,19 +34,20 @@ if __name__ == "__main__":
         .add("trace_id", StringType()) \
         .add("thing_id", IntegerType()) \
         .add("trace_date", StringType()) \
-        .add("long", DoubleType()) \
-        .add("lat", DoubleType()) \
         .add("speed", IntegerType()) \
-        .add("latitute", DoubleType()) \
+        .add("latitude", DoubleType()) \
         .add("longitude", DoubleType()) \
-        .add("engine_status", StringType())
+        .add("engine_status", StringType())\
+        .add("oil_value", IntegerType())\
+        .add("fuel_liters", IntegerType())\
+        .add("fuel_percent", IntegerType())
 
     # Deserialize the JSON data
     df = df.select(from_json(col("value").cast("string"), schema).alias("data"))
 
 
     # make the df in atbale format
-    df = df.selectExpr("data.trace_id", "data.thing_id", "data.trace_date", "data.long", "data.lat", "data.speed", "data.engine_status","data.latitute","data.longitude")
+    df = df.selectExpr("data.trace_id", "data.thing_id", "data.trace_date", "data.speed", "data.engine_status","data.latitude","data.longitude","data.oil_value","data.fuel_liters","data.fuel_percent")
     
 
     
@@ -100,7 +105,7 @@ if __name__ == "__main__":
     #         F.col('old.traveled_distance').isNull(), 
     #         0
     #     ).otherwise(
-    #         F.col('old.traveled_distance') + haversine_udf(F.col('old.latitute'), F.col('old.longitude'), F.col('new.latitute'), F.col('new.longitude'))
+    #         F.col('old.traveled_distance') + haversine_udf(F.col('old.latitude'), F.col('old.longitude'), F.col('new.latitude'), F.col('new.longitude'))
     #     )
     # )
 
@@ -108,10 +113,10 @@ if __name__ == "__main__":
     updated_df = updated_df.withColumn(
     'traveled_distance', 
     F.when(
-        F.col('old.traveled_distance').isNull() | F.col('old.latitute').isNull() | F.col('old.longitude').isNull() | F.col('new.latitute').isNull() | F.col('new.longitude').isNull(), 
+        F.col('old.traveled_distance').isNull() | F.col('old.latitude').isNull() | F.col('old.longitude').isNull() | F.col('new.latitude').isNull() | F.col('new.longitude').isNull(), 
         0
     ).otherwise(
-        F.col('old.traveled_distance') + haversine_udf(F.col('old.latitute'), F.col('old.longitude'), F.col('new.latitute'), F.col('new.longitude'))
+        F.col('old.traveled_distance') + haversine_udf(F.col('old.latitude'), F.col('old.longitude'), F.col('new.latitude'), F.col('new.longitude'))
     )
 )
 
@@ -126,21 +131,174 @@ if __name__ == "__main__":
 
     updated_df = updated_df.withColumn("full_date", F.lit(formatted_date))
 
-    updated_df = updated_df.select("new.thing_id", "date_id",  "avg_speed", "max_speed", "idle_time", "active_time", "full_date","new.longitude","new.latitute","new.trace_date","traveled_distance")
 
-        # Load the model from the file
-    with open('speeding_model.pkl', 'rb') as file:
-        model = pickle.load(file)
+    to_predict = updated_df.select("new.engine_status","new.oil_value","new.fuel_liters","new.thing_id")
+    # to_predict = updated_df.select("new.engine_status","new.oil_value")
+
+
+    to_predict = to_predict.withColumn("last_oil_change", lit(1))
+    to_predict = to_predict.withColumn("car_age", lit(1))
+    to_predict = to_predict.withColumn("fuel_change", lit(2))
+    to_predict = to_predict.withColumn("power_supply_voltage", lit(10))
+
+
+    updated_df = updated_df.withColumn("last_oil_change", lit(1))
+    updated_df = updated_df.withColumn("car_age", lit(1))
+    updated_df = updated_df.withColumn("fuel_change", lit(2))
+    updated_df = updated_df.withColumn("power_supply_voltage", lit(10))
+
+
+
+
+
+    updated_df = updated_df.select("last_oil_change", "car_age","fuel_change","power_supply_voltage","new.thing_id", "date_id",  "avg_speed", "max_speed", "idle_time", "active_time", "full_date","new.longitude","new.latitude","new.trace_date","traveled_distance","oil_value","engine_status","fuel_liters","fuel_percent")
+
+
+
+    #     # Load the model from the file
+    # with open('speeding_model.pkl', 'rb') as file:
+    #     model = pickle.load(file)
+
+        # Later, load the model\
+
+  
+
+    # Define a user-defined function that applies the model
+    # @udf(IntegerType())
+    # def predict_speeding(engine_status, power_supply_voltage, oil_value, fuel_liters, fuel_change, car_age, last_oil_change):
+    #     # prediction = model.predict(np.array([[engine_status, power_supply_voltage, oil_value, fuel_liters, fuel_change, car_age, last_oil_change]]))
+    #     # prediction = model.predict(np.array([[speed]]))
+    #     return 1
+    #     # return int(prediction[0])
+
+    # @udf(IntegerType())
+    # def predict_speeding2(engine_status):
+    #     # prediction = model.predict(np.array([[engine_status, power_supply_voltage, oil_value, fuel_liters, fuel_change, car_age, last_oil_change]]))
+    #     # prediction = model.predict(np.array([[speed]]))
+    #     return 1
+    
+
+    # Define a user-defined function that applies the model
+    # @udf(IntegerType())
+    # def predict_speeding(row):
+    #     features = [row['engine_status'], row['power_supply_voltage'], row['oil_value'], row['fuel_liters'], row['fuel_change'], row['car_age'], row['last_oil_change']]
+    #     prediction = model.predict([features])
+    #     return int(prediction[0])
+
+
+    # # Apply the model to the incoming DataFrame
+    # updated_df = updated_df.withColumn('s', lit(predict_speeding2(to_predict["engine_status"])))
+
+    # updated_df = updated_df.withColumn('s', predict_speeding2(to_predict["engine_status"]))
+
+
+    # Apply the model to the to_predict DataFrame
+    # to_predict = to_predict.withColumn('s', predict_speeding2(to_predict["engine_status"]))
+
+
+    # Apply the function to the list
+    # prediction = predict_speeding2(to_predict["engine_status"])
+
+    # Add the prediction as a new column to the updated_df DataFrame
+    # updated_df = updated_df.withColumn('s', lit(prediction))
+
+    # Join the original DataFrame with the predictions
+    # updated_df = updated_df.join(to_predict, on=['thing_id'], how='left')
+    # updated_df = updated_df.withColumn('is_speeding', lit(predict_speeding(to_predict['engine_status'],to_predict['power_supply_voltage'], to_predict['oil_value'], to_predict['fuel_liters'], to_predict['fuel_change'], to_predict['car_age'], to_predict['last_oil_change'])))
+    # print(updated_df.show(2))
+    
+
+
+
+
+    # ==================================================
+    # ==================================================
+    # ==================================================
+    # ==================================================
+    # ==================================================
+    # ==================================================
+    # ==================================================
+    # apply ml model on incomming eveents
+
+
+
+    import joblib
+
 
     # Define a user-defined function that applies the model
     @udf(IntegerType())
     def predict_speeding(speed):
-        prediction = model.predict(np.array([[speed]]))
+        model = load_model('pm_model.h5')
+
+        # prediction = model.predict(np.array([[speed]]))
+        return 1
         return int(prediction[0])
+    # model = load_model('pm_model.h5')
+    # 
 
+        # Define a user-defined function that applies the model
+    @udf(IntegerType())
+    def mlp(engine_status, power_supply_voltage, oil_value, fuel_liters, fuel_change, car_age, last_oil_change):
+        model = load_model('pm_model.h5')
+        scaler = joblib.load('/Users/mac/prediction/my_scaler.pkl')
+
+
+        # prediction = model.predict(np.array([[engine_status], [power_supply_voltage], [oil_value], [fuel_liters], [fuel_change], [car_age], [last_oil_change]]))
+        # return int(prediction[0])
+
+            # Convert the inputs to a 2D array
+        features = np.array([[engine_status, power_supply_voltage, oil_value, fuel_liters, fuel_change, car_age, last_oil_change]])
+        
+        # Scale the features using the saved scaler
+        features_scaled = scaler.transform(features)
+        
+        # Reshape to 3D array (samples, timesteps, features)
+        features_array = features_scaled.reshape((1, 1, features_scaled.shape[1]))
+        
+        # Apply the model
+        prediction = model.predict(features_array)
+
+ 
+
+        predicted_class = np.argmax(prediction)
+
+        return int(predicted_class)
+    
     # Apply the model to the incoming DataFrame
-    updated_df = updated_df.withColumn('is_speeding', predict_speeding(updated_df['max_speed']))
+    updated_df = updated_df.withColumn('year', mlp(updated_df['car_age'], updated_df['fuel_change'], updated_df['last_oil_change'], updated_df['power_supply_voltage'], updated_df['oil_value'], updated_df['fuel_liters'], updated_df['engine_status']))
 
+
+    updated_df = updated_df.drop("last_oil_change", "car_age","fuel_change","power_supply_voltage","engine_status","oil_value","fuel_liters","fuel_percent")
+
+# Now df includes a new column 'is_speeding' with the model's predictions
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
+    # # Define a function that applies the model
+    # def predict_speeding(features):
+    #     prediction = model.predict([features])
+    #     return int(prediction[0])
+
+    # Convert the PySpark DataFrame to a Pandas DataFrame
+    # pandas_df = to_predict.toPandas()
+
+    # Apply the model to the Pandas DataFrame
+    # updated_df['is_speeding'] = pandas_df.apply(predict_speeding, axis=1)
+
+    # Convert the Pandas DataFrame back to a PySpark DataFrame
+    # updated_df = spark.createDataFrame(pandas_df)
 
     # Start the query to print the output to the console
     # query = updated_df \

@@ -13,7 +13,7 @@ from cassandra.query import dict_factory
 import datetime
 from pyspark.sql import functions as F
 from geopy.geocoders import Nominatim
-from datetime import datetime
+# from datetime import datetime
 
 def get_street_address(p):
     latitude , longitude = p.split(',')
@@ -694,12 +694,59 @@ async def get_cars(thing_id: Optional[int]=None, group_id: Optional[int]=None, t
     result = []
     for row in rows:
         result.append({
-            "latitude": row.latitute,
+            "latitude": row.latitude,
             "longitude": row.longitude,
             "thing_id": row.thing_id,
             "active_time": row.active_time,
             "avg_speed": row.avg_speed,
             "max_speed": row.max_speed
+        })
+    return result
+
+
+# define a route to get all cars
+@app.get("/get_car2")
+async def get_cars(thing_id: str):
+    """
+    Endpoint to get all cars.
+
+    Returns:
+        list: A list of all cars.
+    """
+
+    # Connect to Cassandra cluster
+    cluster = Cluster(['localhost'])
+    session = cluster.connect()
+
+
+    # Use the keyspace
+    session.set_keyspace('pfe')
+
+    select_query = f"""
+    SELECT
+        *
+    FROM
+        vehicle_performance
+
+    where thing_id={thing_id}
+        """
+    rows = session.execute(select_query)
+
+
+        # Close the connection
+    session.shutdown()
+    cluster.shutdown()
+
+    result = []
+    for row in rows:
+        result.append({
+            "latitude": row.latitude,
+            "longitude": row.longitude,
+            "thing_id": row.thing_id,
+            "active_time": row.active_time,
+            "avg_speed": row.avg_speed,
+            "max_speed": row.max_speed,
+            "prediction": row.year,
         })
     return result
 
@@ -2982,6 +3029,7 @@ async def get_active_count(group_id: Optional[int]=None,type_id: Optional[int]=N
 # #######################################
 # #######################################
 # predictive maintance routes
+
 # define a rout to get the historcal oil value
 @app.get('/historical/oil')
 async def get_historical_oil() -> Union[list, None]:
@@ -3001,7 +3049,7 @@ async def get_historical_oil() -> Union[list, None]:
 
 
     select_query = f"""
-                select * from trace where thing_id = '627' ORDER BY trace_date ASC limit 100 ;      
+                select * from trace where thing_id = '627' ORDER BY trace_date DESC limit 100 ;      
         """
     
 
@@ -3016,7 +3064,7 @@ async def get_historical_oil() -> Union[list, None]:
     date = [row['trace_date'] for row in rows]
 
 
-    date = [datetime.strptime(row['trace_date'], '%Y-%m-%d %H:%M:%S.%f').strftime('%M:%S') for row in rows]    # Close connection
+    date = [datetime.datetime.strptime(row['trace_date'], '%Y-%m-%d %H:%M:%S.%f').strftime('%M:%S') for row in rows]    # Close connection
     session.shutdown()
 
     # make a dict from that list
@@ -3024,8 +3072,41 @@ async def get_historical_oil() -> Union[list, None]:
 
  
 
+# define a rout to get the historcal fuel values
+@app.get('/historical/fuel')
+async def get_historical_fuel() -> Union[list, None]:
+    """
+    """
 
-    # Extracting years and distances into separate lists
-    years = [entry[0] for entry in rows]
-    distances = [entry[1] for entry in rows]
-    return [years, distances]
+
+        # Connect to Cassandra
+    cluster = Cluster(['localhost'])
+    session = cluster.connect()
+
+
+    # Use the keyspace
+    session.set_keyspace('pfe')
+    session.row_factory = dict_factory
+
+
+
+    select_query = f"""
+                select * from trace where thing_id = '627' ORDER BY trace_date DESC limit 100 ;      
+        """
+    
+
+   
+    rows = session.execute(select_query)
+
+    rows = list(rows)
+    
+    # Create two lists: one for the distances and one for the dates
+    fuel = [row['fuel_percent'] for row in rows]
+    date = [row['trace_date'] for row in rows]
+
+    date = [datetime.datetime.strptime(row['trace_date'], '%Y-%m-%d %H:%M:%S.%f').strftime('%M:%S') for row in rows]    # Close connection
+    session.shutdown()
+
+    # make a dict from that list
+    return [fuel,date]
+

@@ -20,11 +20,15 @@ model.fit(X_train, y_train.ravel())
 
 import pickle
 
-# Save the trained model to a file
-with open('speeding_model.pkl', 'wb') as file:
-    pickle.dump(model, file)
+# # Save the trained model to a file
+# with open('speeding_model.pkl', 'wb') as file:
+#     pickle.dump(model, file)
 
-    
+
+# Later, load the model
+from keras.models import load_model
+model = load_model('pm_model.h5')
+  
 # Test the model
 predictions = model.predict(X_test)
 

@@ -60,7 +60,7 @@ session.execute("""
                 thing_name text,
                 thing_type text,
                 thing_plate text,
-                latitute double,
+                latitude double,
                 longitude double,
                 trace_date text,
                 PRIMARY KEY (thing_id)
