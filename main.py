@@ -1012,7 +1012,6 @@ async def get_distance(thing_id: Optional[int]=None, group_id: Optional[int]=Non
         list: A list of data for the specified thing.
         None: If no data is found for the specified thing.
     """
-
     
     if months:
 
@@ -1077,6 +1076,66 @@ async def get_distance(thing_id: Optional[int]=None, group_id: Optional[int]=Non
 
                         """).\
                 load()
+
+            elif group_id:
+                df_mysq1 = spark.read.format('jdbc').\
+                option('url', 'jdbc:postgresql://localhost:5432/geopfe').\
+                option("driver", "org.postgresql.Driver").\
+                option('user', 'postgres').\
+                option('password', 'ryqn').\
+                option('query', f"""
+                       
+                            SELECT
+                        
+                                    TO_CHAR(d.full_date, 'Day') ||
+                                    d.full_date as datee,
+                                    
+                            
+                                SUM(v.travled_distance) as distance
+                            FROM
+                                vehicle_peroformance v,
+                                thing_dim t,
+                                date_dim d
+                            WHERE
+                                v.date_id = d.date_id
+                                AND v.thing_id = t.thing_id
+                                AND year = {years}
+                                AND month = {months}
+                    AND t.group_id = {group_id}
+                                    
+                                GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day')  
+    
+                            """).load()
+                
+            elif type_id:
+                                df_mysq1 = spark.read.format('jdbc').\
+                option('url', 'jdbc:postgresql://localhost:5432/geopfe').\
+                option("driver", "org.postgresql.Driver").\
+                option('user', 'postgres').\
+                option('password', 'ryqn').\
+                option('query', f"""
+                       
+                            SELECT
+                        
+                                    TO_CHAR(d.full_date, 'Day') ||
+                                    d.full_date as datee,
+                                
+                                SUM(v.travled_distance) as distance
+                            FROM
+                                vehicle_peroformance v,
+                                thing_dim t,
+                                date_dim d
+                            WHERE
+                                v.date_id = d.date_id
+                                AND v.thing_id = t.thing_id
+                                AND year = {years}
+                                AND month = {months}
+                    AND t.type_id = {type_id}
+                                        
+                                    GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day')  
+        
+                                """).load()
+
             else:
                 df_mysq1 = spark.read.format('jdbc').\
                 option('url', 'jdbc:postgresql://localhost:5432/geopfe').\
@@ -1145,6 +1204,7 @@ async def get_distance(thing_id: Optional[int]=None, group_id: Optional[int]=Non
         else:
             select_query += " group by \"day\", full_date"
 
+
         cursor_postgres.execute(select_query)
         rows = cursor_postgres.fetchall()
         # Extracting years and distances into separate lists
@@ -1156,7 +1216,8 @@ async def get_distance(thing_id: Optional[int]=None, group_id: Optional[int]=Non
         return result_list
 
 
-    elif years:
+    elif years: 
+
 
         select_query = f"""
             SELECT
@@ -1190,6 +1251,7 @@ async def get_distance(thing_id: Optional[int]=None, group_id: Optional[int]=Non
 
         # Creating a list containing years and distances lists
         result_list = [years, distances]
+
         return result_list
 
 
@@ -1314,6 +1376,38 @@ async def get_thing(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                 """
                         ).\
                 load()
+
+            elif group_id:
+                df_mysq1 = spark.read.format('jdbc').\
+                option('url', 'jdbc:postgresql://localhost:5432/geopfe').\
+                option("driver", "org.postgresql.Driver").\
+                option('user', 'postgres').\
+                option('password', 'ryqn').\
+                option('query', f"""
+                    
+                            SELECT
+                            
+                                        TO_CHAR(d.full_date, 'Day') ||
+                                        d.full_date as datee,
+                                        
+                                
+                                    SUM(v.idle_time) as idle_time,
+                                    SUM(v.active_time) as active_time
+                                   FROM
+                                       vehicle_peroformance v,
+                                        thing_dim t,
+                                        date_dim d
+                                       WHERE
+                                       v.date_id = d.date_id
+                                       AND v.thing_id = t.thing_id
+                                       AND year = 2024
+                                       AND month = 3
+                                       AND t.group_id = {group_id}
+
+                                       GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day')
+                                """
+                        ).\
+                load()                       
             else:
 
                 df_mysq1 = spark.read.format('jdbc').\
@@ -1364,22 +1458,29 @@ async def get_thing(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
             select_query = f"""
 
             SELECT
-	TO_CHAR(d.full_date, 'Day') || d.full_date AS datee,
-	SUM(v.idle_time),
-	SUM(v.active_time) "day"
-FROM
-	vehicle_peroformance v,
-	thing_dim t,
-	date_dim d
-WHERE
-	v.date_id = d.date_id
-	AND v.thing_id = t.thing_id
-	AND year = {years}
-	AND month = {months}
-GROUP BY
-	TO_CHAR(d.full_date, 'Day'), d.full_date;
-        """
+                    TO_CHAR(d.full_date, 'Day') || d.full_date AS datee,
+                    SUM(v.idle_time),
+                    SUM(v.active_time) "day"
+                FROM
+                    vehicle_peroformance v,
+                    thing_dim t,
+                    date_dim d
+                WHERE
+                    v.date_id = d.date_id
+                    AND v.thing_id = t.thing_id
+                    AND year = {years}
+                    AND month = {months}
+                
+                        """
 
+            if thing_id:
+                select_query += f" AND v.thing_id = {thing_id} group by TO_CHAR(d.full_date, 'Day'), d.full_date"
+            elif group_id:
+                select_query += f" AND t.group_id = {group_id} group by TO_CHAR(d.full_date, 'Day'), d.full_date"
+            elif type_id:
+                select_query += f" AND t.type_id = {type_id} group by TO_CHAR(d.full_date, 'Day'), d.full_date"
+            else:
+                select_query += " group by TO_CHAR(d.full_date, 'Day'), d.full_date"
             
         cursor_postgres.execute(select_query)
         rows = cursor_postgres.fetchall()
@@ -1557,10 +1658,74 @@ async def get_speed(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                 AND year = {years}
                                 AND month = {months}
                         AND v.thing_id = {thing_id}
-                                        
                                     GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
+                                        
                                     """
                 ).load()
+
+            elif group_id:
+                    df_mysq1 = spark.read.format('jdbc').\
+                    option('url', 'jdbc:postgresql://localhost:5432/geopfe').\
+                    option("driver", "org.postgresql.Driver").\
+                    option('user', 'postgres').\
+                    option('password', 'ryqn').\
+                    option('query', f"""
+                        
+                                SELECT
+                            
+                                        TO_CHAR(d.full_date, 'Day') ||
+                                        d.full_date as datee,
+                                        
+                                
+                                    AVG(v.avg_speed) as avg_speed,
+                                    MAX(v.max_speed) as max_speed
+                                FROM
+                                    vehicle_peroformance v,
+                                    thing_dim t,
+                                    date_dim d
+                                WHERE
+                                    v.date_id = d.date_id
+                                    AND v.thing_id = t.thing_id
+                                    AND year = {years}
+                                    AND month = {months}
+                            AND v.group_id = {group_id}
+                                        GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
+                                            
+                                        """
+                    ).load()
+
+
+            elif type_id:
+                                df_mysq1 = spark.read.format('jdbc').\
+                option('url', 'jdbc:postgresql://localhost:5432/geopfe').\
+                option("driver", "org.postgresql.Driver").\
+                option('user', 'postgres').\
+                option('password', 'ryqn').\
+                option('query', f"""
+                    
+                            SELECT
+                        
+                                    TO_CHAR(d.full_date, 'Day') ||
+                                    d.full_date as datee,
+                                    
+                            
+                                AVG(v.avg_speed) as avg_speed,
+                                MAX(v.max_speed) as max_speed
+                            FROM
+                                vehicle_peroformance v,
+                                thing_dim t,
+                                date_dim d
+                            WHERE
+                                v.date_id = d.date_id
+                                AND v.thing_id = t.thing_id
+                                AND year = {years}
+                                AND month = {months}
+                        AND v.type_id = {type_id}
+                                    GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
+                                        
+                                    """
+                ).load()
+
             else:
                     
                     df_mysq1 = spark.read.format('jdbc').\
@@ -1622,9 +1787,17 @@ async def get_speed(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                 AND v.thing_id = t.thing_id
                 AND \"year\" = {years}
                 AND \"month\" = {months}
-            GROUP BY
-                \"day\", full_date
             """ 
+
+            if thing_id:
+                select_query += f" AND v.thing_id = {thing_id} group by \"day\", full_date"
+            elif group_id:
+                select_query += f" AND t.group_id = {group_id} group by \"day\", full_date"
+            elif type_id:
+                select_query += f" AND t.type_id = {type_id} group by \"day\", full_date"
+            else:
+                select_query += " group by \"day\", full_date"
+                
 
         cursor_postgres.execute(select_query)
         rows = cursor_postgres.fetchall()
@@ -1799,6 +1972,70 @@ async def get_fuel(thing_id: Optional[int]=None, group_id: Optional[int]=None, t
                                     """
                 ).\
                 load()
+
+
+            elif group_id:
+                df_mysq1 = spark.read.format('jdbc').\
+                option('url', 'jdbc:postgresql://localhost:5432/geopfe').\
+                option("driver", "org.postgresql.Driver").\
+                option('user', 'postgres').\
+                option('password', 'ryqn').\
+                option('query', f"""
+                    
+                            SELECT
+                        
+                                    TO_CHAR(d.full_date, 'Day') ||
+                                    d.full_date as datee,
+                                    
+                            
+                                SUM(v.fuel) as fuel_consumed
+                            FROM
+                                vehicle_peroformance v,
+                                thing_dim t,
+                                date_dim d
+                            WHERE
+                                v.date_id = d.date_id
+                                AND v.thing_id = t.thing_id
+                                AND year = {years}
+                                AND month = {months}
+                        AND v.group_id = {group_id}
+                                        
+                                    GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
+                                    """
+                ).\
+                load()
+
+            elif type_id:
+                                df_mysq1 = spark.read.format('jdbc').\
+                option('url', 'jdbc:postgresql://localhost:5432/geopfe').\
+                option("driver", "org.postgresql.Driver").\
+                option('user', 'postgres').\
+                option('password', 'ryqn').\
+                option('query', f"""
+                    
+                            SELECT
+                        
+                                    TO_CHAR(d.full_date, 'Day') ||
+                                    d.full_date as datee,
+                                    
+                            
+                                SUM(v.fuel) as fuel_consumed
+                            FROM
+                                vehicle_peroformance v,
+                                thing_dim t,
+                                date_dim d
+                            WHERE
+                                v.date_id = d.date_id
+                                AND v.thing_id = t.thing_id
+                                AND year = {years}
+                                AND month = {months}
+                        AND v.type_id = {type_id}
+                                        
+                                    GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
+                                    """
+                ).\
+                load()
+
             else:
                     
                     df_mysq1 = spark.read.format('jdbc').\
@@ -1852,9 +2089,15 @@ async def get_fuel(thing_id: Optional[int]=None, group_id: Optional[int]=None, t
                 AND v.thing_id = t.thing_id
                 AND \"year\" = {years}
                 AND \"month\" = {months}
-            GROUP BY
-                \"day\", full_date
+
             """
+
+            if thing_id:
+                select_query += f" AND v.thing_id = {thing_id} group by \"day\", full_date"
+            elif group_id:
+                select_query += f" AND t.group_id = {group_id} group by \"day\", full_date"
+            elif type_id:
+                select_query += f" AND t.type_id = {type_id} group by \"day\", full_date"
         
         cursor_postgres.execute(select_query)
         rows = cursor_postgres.fetchall()
@@ -2137,6 +2380,7 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
             select_query += f" AND t.group_id = {group_id} group by \"year\""
         elif type_id:
             select_query += f" AND t.type_id = {type_id} group by \"year\""
+            # return [11]
         else:
             select_query += " group by \"year\""
 
@@ -2229,6 +2473,66 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                     """
                 ).\
                 load()
+
+            elif group_id:
+                                df_mysq1 = spark.read.format('jdbc').\
+                option('url', 'jdbc:postgresql://localhost:5432/geopfe').\
+                option("driver", "org.postgresql.Driver").\
+                option('user', 'postgres').\
+                option('password', 'ryqn').\
+                option('query', f"""
+                    
+                            SELECT
+                        
+                                    TO_CHAR(d.full_date, 'Day') ||
+                                    d.full_date as datee,
+                                    
+                            COUNT(*) AS alerts_raised
+                            FROM
+                                alert_fact v,
+                                thing_dim t,
+                                date_dim d
+                            WHERE
+                                v.date_id = d.date_id
+                                AND v.thing_id = t.thing_id
+                                AND year = {years}
+                                AND month = {months}
+                        AND v.group_id = {group_id}
+                                        
+                                    GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
+                                    """
+                ).\
+                load()
+                                
+            elif type_id:
+                                df_mysq1 = spark.read.format('jdbc').\
+                option('url', 'jdbc:postgresql://localhost:5432/geopfe').\
+                option("driver", "org.postgresql.Driver").\
+                option('user', 'postgres').\
+                option('password', 'ryqn').\
+                option('query', f"""
+                    
+                            SELECT
+                        
+                                    TO_CHAR(d.full_date, 'Day') ||
+                                    d.full_date as datee,
+                                    
+                            COUNT(*) AS alerts_raised
+                            FROM
+                                alert_fact v,
+                                thing_dim t,
+                                date_dim d
+                            WHERE
+                                v.date_id = d.date_id
+                                AND v.thing_id = t.thing_id
+                                AND year = {years}
+                                AND month = {months}
+                        AND v.type_id = {type_id}
+                                        
+                                    GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
+                                    """
+                ).\
+                load()
             else:
                     
                     df_mysq1 = spark.read.format('jdbc').\
@@ -2283,9 +2587,15 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                 AND \"year\" = {years}
                 AND \"month\" = {months}
                 AND alert_degree_id = 1
-            GROUP BY
-                \"day\", full_date
+
             """
+
+            if thing_id:
+                select_query += f" AND v.thing_id = {thing_id} group by \"day\", full_date"
+            elif group_id:
+                select_query += f" AND t.group_id = {group_id} group by \"day\", full_date"
+            elif type_id:
+                select_query += f" AND t.type_id = {type_id} group by \"day\", full_date"
 
         cursor_postgres.execute(select_query)
         rows = cursor_postgres.fetchall()
@@ -2443,6 +2753,67 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                     """
                 ).\
                 load()
+
+            elif group_id:
+                                df_mysq1 = spark.read.format('jdbc').\
+                option('url', 'jdbc:postgresql://localhost:5432/geopfe').\
+                option("driver", "org.postgresql.Driver").\
+                option('user', 'postgres').\
+                option('password', 'ryqn').\
+                option('query', f"""
+                    
+                            SELECT
+                        
+                                    TO_CHAR(d.full_date, 'Day') ||
+                                    d.full_date as datee,
+                                    
+                            COUNT(*) AS alerts_raised
+                            FROM
+                                alert_fact v,
+                                thing_dim t,
+                                date_dim d
+                            WHERE
+                                v.date_id = d.date_id
+                                AND v.thing_id = t.thing_id
+                                AND year = {years}
+                                AND month = {months}
+                        AND v.group_id = {group_id}
+                                        
+                                    GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
+                                    """
+                ).\
+                load()
+                                
+            elif type_id:
+                                df_mysq1 = spark.read.format('jdbc').\
+                option('url', 'jdbc:postgresql://localhost:5432/geopfe').\
+                option("driver", "org.postgresql.Driver").\
+                option('user', 'postgres').\
+                option('password', 'ryqn').\
+                option('query', f"""
+                    
+                            SELECT
+                        
+                                    TO_CHAR(d.full_date, 'Day') ||
+                                    d.full_date as datee,
+                                    
+                            COUNT(*) AS alerts_raised
+                            FROM
+                                alert_fact v,
+                                thing_dim t,
+                                date_dim d
+                            WHERE
+                                v.date_id = d.date_id
+                                AND v.thing_id = t.thing_id
+                                AND year = {years}
+                                AND month = {months}
+                        AND v.type_id = {type_id}
+                                        
+                                    GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
+                                    """
+                ).\
+                load()
+                                
             else:
                     
                     df_mysq1 = spark.read.format('jdbc').\
@@ -2497,9 +2868,15 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                 AND \"year\" = {years}
                 AND \"month\" = {months}
                 AND alert_degree_id = 2
-            GROUP BY
-                \"day\", full_date
+ 
             """
+
+            if thing_id:
+                select_query += f" AND v.thing_id = {thing_id} group by \"day\", full_date"
+            elif group_id:
+                select_query += f" AND t.group_id = {group_id} group by \"day\", full_date"
+            elif type_id:
+                select_query += f" AND t.type_id = {type_id} group by \"day\", full_date"
 
         cursor_postgres.execute(select_query)
         rows = cursor_postgres.fetchall()
@@ -2658,6 +3035,68 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                     """
                 ).\
                 load()
+
+            elif group_id:
+                                df_mysq1 = spark.read.format('jdbc').\
+                option('url', 'jdbc:postgresql://localhost:5432/geopfe').\
+                option("driver", "org.postgresql.Driver").\
+                option('user', 'postgres').\
+                option('password', 'ryqn').\
+                option('query', f"""
+                    
+                            SELECT
+                        
+                                    TO_CHAR(d.full_date, 'Day') ||
+                                    d.full_date as datee,
+                                    
+                            COUNT(*) AS alerts_raised
+                            FROM
+                                alert_fact v,
+                                thing_dim t,
+                                date_dim d
+                            WHERE
+                                v.date_id = d.date_id
+                                AND v.thing_id = t.thing_id
+                                AND year = {years}
+                                AND month = {months}
+                        AND v.group_id = {group_id}
+                                        
+                                    GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
+                                    """
+                ).\
+                load()
+                                
+            elif type_id:
+                                df_mysq1 = spark.read.format('jdbc').\
+                option('url', 'jdbc:postgresql://localhost:5432/geopfe').\
+                option("driver", "org.postgresql.Driver").\
+                option('user', 'postgres').\
+                option('password', 'ryqn').\
+                option('query', f"""
+                    
+                            SELECT
+                        
+                                    TO_CHAR(d.full_date, 'Day') ||
+                                    d.full_date as datee,
+                                    
+                            COUNT(*) AS alerts_raised
+                            FROM
+                                alert_fact v,
+                                thing_dim t,
+                                date_dim d
+                            WHERE
+                                v.date_id = d.date_id
+                                AND v.thing_id = t.thing_id
+                                AND year = {years}
+                                AND month = {months}
+                        AND v.type_id = {type_id}
+                                        
+                                    GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
+                                    """
+                ).\
+                load()
+                                
+
             else:
                     
                     df_mysq1 = spark.read.format('jdbc').\
@@ -2712,9 +3151,14 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                 AND \"year\" = {years}
                 AND \"month\" = {months}
                 AND alert_degree_id = 3
-            GROUP BY
-                \"day\", full_date
             """
+
+            if thing_id:
+                select_query += f" AND v.thing_id = {thing_id} group by \"day\", full_date"
+            elif group_id:
+                select_query += f" AND t.group_id = {group_id} group by \"day\", full_date"
+            elif type_id:
+                 select_query += f" AND t.type_id = {type_id} group by \"day\", full_date"
 
         cursor_postgres.execute(select_query)
         rows = cursor_postgres.fetchall()
