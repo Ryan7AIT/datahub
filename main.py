@@ -521,7 +521,7 @@ async def search_thing(thing_id: str) -> Union[list, None]:
 
 # get number of alerts
 @app.get("/query/alerts")
-async def get_alerts(thing_id: Optional[int]=None, years: Optional[str] = None, months: Optional[str] = None, d1: Optional[str] = None, d2: Optional[str] = None) -> Union[list, None]:
+async def get_alerts(thing_id: Optional[int]=None, group_id: Optional[int]=None, type_id: Optional[int]=None, years: Optional[str] = None, months: Optional[str] = None, d1: Optional[str] = None, d2: Optional[str] = None) -> Union[list, None]:
     """
     Endpoint to get data for a specific thing.
 
@@ -544,14 +544,25 @@ async def get_alerts(thing_id: Optional[int]=None, years: Optional[str] = None, 
                 COUNT(alert_count)
             FROM
                 alert_fact f,
-                alert_deg_dim d
+                alert_deg_dim d,
+                thing_dim t
             WHERE
                 f.alert_degree_id = d.alert_degree_id
+
+                AND f.thing_id = t.thing_id
+
      
     """
 
     if thing_id :
-        select_query += f" AND a.thing_id = {thing_id} group by f.alert_degree_id"
+        select_query += f" AND t.thing_id = {thing_id} group by f.alert_degree_id"
+
+    if group_id:
+        select_query += f" AND t.group_id = {group_id} group by f.alert_degree_id"
+    elif type_id:
+        select_query += f" AND t.type_id = {type_id} group by f.alert_degree_id"
+
+    
     else:
         select_query += " group by f.alert_degree_id"
 
