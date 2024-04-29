@@ -2,15 +2,23 @@ import mysql.connector
 from datetime import datetime
 import psycopg2
 from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut
+import time
 
 
 def get_street_address(p):
     latitude , longitude = p.split(',')
-    geolocator = Nominatim(user_agent="my_app")
-    location = geolocator.reverse((latitude, longitude))
-    address = location.raw['address']
+    # geolocator = Nominatim(user_agent="my_app")
+    geolocator = Nominatim(user_agent="my_app", timeout=10)  # Increase the timeout to 10 seconds
 
-    return address.get('town'), address.get('state'), address.get('country')
+    try:
+        location = geolocator.reverse((latitude, longitude))
+        address = location.raw['address']
+        return address.get('town'), address.get('state'), address.get('country')
+
+    except GeocoderTimedOut:
+        return get_street_address(p)
+
 
 # Create a connection to the MySQL database
 cnx = mysql.connector.connect(user='root', password='', host='localhost', database='geopfe')
@@ -39,6 +47,10 @@ cursor2.execute('''
     )
 ''')
 
+print('============================================================')
+
+print('journey_dim table created')
+
 #create table journey
 cursor2.execute("""
 CREATE TABLE IF NOT EXISTS journey (
@@ -54,21 +66,38 @@ CREATE TABLE IF NOT EXISTS journey (
 );
 """)
 
+print('============================================================')
+
+print('journey table created')
+
 
 # Get all distinct thing_ids
 cursor2.execute("SELECT MAX(date_id)  FROM journey ")
 last_date = cursor2.fetchall()
 
+
+
 print('last_date:', last_date[0][0])
+
+# last_date = last_date[0][0]
+# last_date = last_date[0][0]
 
 
 # Get all distinct thing_ids
-cursor.execute("SELECT DISTINCT thing_id FROM trace_week where thing_id < 500")
+cursor.execute("SELECT DISTINCT thing_id FROM trace_week where thing_id < 700")
 thing_ids = cursor.fetchall()
+
+
+# get the last journey id from the journy dim table 
+cursor2.execute("SELECT MAX(journey_id) FROM journey_dim")
+journey_id = cursor2.fetchall()
+journey_id = journey_id[0][0]
+if journey_id is None:
+    journey_id = 0
+print('journey_id:', journey_id)
 
 # Initialize an empty list to store all journeys
 all_journeys = []
-journey_id = 0
 
 # Loop over all thing_ids
 for thing_id_tuple in thing_ids:
@@ -89,7 +118,7 @@ FROM
 	trace_week
 	JOIN date_dim d ON trace_date_day = full_date
 WHERE
-	thing_id = %s AND date_id > '{last_date[0][0]} and thing_id < 500' and date_id < '2024-02-29'
+	thing_id = %s AND date_id > '{last_date[0][0]}' and date_id < '4' 
 
 GROUP BY
 	thing_id,
@@ -109,7 +138,9 @@ ORDER BY
 
 
 
-
+    print('============================================================')
+    print('number of rows:', len(rows))
+    print('thing_id:', thing_id)
 
 
     # Initialize variables
@@ -124,6 +155,7 @@ ORDER BY
 
     # Loop over all rows
     for i in range(len(rows)):
+        time.sleep(0.01)
         row = rows[i]
         if i > 0 and row[2] == 1 and rows[i-1][2] == 0:
             start_trace_date = row[0]
@@ -161,24 +193,28 @@ ORDER BY
 # for journey in all_journeys:
 #     print(journey)
 
-print('journeys:', len(all_journeys))
+
+print('============================================================')
+
+print('journeys inserted into journey table')
+
+print("number of journeys:", len(all_journeys))
 
 
-
-#create table journey
-cursor2.execute("""
-CREATE TABLE IF NOT EXISTS journey (
-    id SERIAL PRIMARY KEY,
-    journey_id INT,
-    thing_id INT,
-    traveled_distance FLOAT,
-    idle_time FLOAT,
-    active_time FLOAT,
-    avg_speed FLOAT,
-    max_speed FLOAT,
-    date_id INT
-);
-""")
+# #create table journey
+# cursor2.execute("""
+# CREATE TABLE IF NOT EXISTS journey (
+#     id SERIAL PRIMARY KEY,
+#     journey_id INT,
+#     thing_id INT,
+#     traveled_distance FLOAT,
+#     idle_time FLOAT,
+#     active_time FLOAT,
+#     avg_speed FLOAT,
+#     max_speed FLOAT,
+#     date_id INT
+# );
+# """)
 
 # Insert the rows into the PostgreSQL table
 for journey in all_journeys:

@@ -24,6 +24,7 @@ def produce_events(bootstrap_servers, topic):
             'oil_value': random.randint(2, 5),
             'fuel_liters': random.randint(1, 10),
             'fuel_percent': random.randint(1, 100),
+            "battery": random.randint(10,16)
 
 
             # {"oil_value": "0", "fuel_liters": "0", "frigo_status": "0", "fuel_percent": "0", "liquid_value": "0", "is_new_changes":
@@ -42,6 +43,8 @@ def produce_events(bootstrap_servers, topic):
             'oil_value': random.randint(2, 5),
             'fuel_liters': random.randint(1, 10),
             'fuel_percent': random.randint(1, 100),
+            "battery": random.randint(10,16)
+
         }
 
         event3 = {
@@ -54,6 +57,8 @@ def produce_events(bootstrap_servers, topic):
             'oil_value': random.randint(2, 5),
             'fuel_liters': random.randint(1, 10),
             'fuel_percent': random.randint(1, 100),
+            "battery": random.randint(10,16)
+
         }
 
         producer.send(topic, value=str(event).encode('utf-8'))

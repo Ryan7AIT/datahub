@@ -26,14 +26,15 @@ if __name__ == "__main__":
         .add("engine_status", StringType())\
         .add("oil_value", IntegerType())\
         .add("fuel_liters", IntegerType())\
-        .add("fuel_percent", IntegerType())
+        .add("fuel_percent", IntegerType())\
+        .add("battery",IntegerType())
 
     # Deserialize the JSON data
     df = df.select(from_json(col("value").cast("string"), schema).alias("data"))
 
 
     # make the df in atbale format
-    df = df.selectExpr("data.trace_id", "data.thing_id", "data.trace_date", "data.longitude", "data.latitude", "data.speed", "data.engine_status", "data.oil_value", "data.fuel_liters", "data.fuel_percent")
+    df = df.selectExpr("data.trace_id", "data.thing_id","data.battery", "data.trace_date", "data.longitude", "data.latitude", "data.speed", "data.engine_status", "data.oil_value", "data.fuel_liters", "data.fuel_percent")
 
     #rename a cloumn
     df = df.withColumnRenamed("latitude","lat")

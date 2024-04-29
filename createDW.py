@@ -9,7 +9,6 @@ conn = psycopg2.connect(
     password="ryqn"
 )
 
-print('111')
 # Create a cursor object to interact with the database
 cur = conn.cursor()
 

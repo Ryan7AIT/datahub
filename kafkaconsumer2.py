@@ -16,8 +16,9 @@ import pandas as pd
 if __name__ == "__main__":
     spark = SparkSession.builder.appName("KafkaConsumer")\
         .config('spark.jars.packages', 'org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.0,com.datastax.spark:spark-cassandra-connector_2.12:3.1.0')\
+        .config("spark.sql.sources.partitionOverwriteMode", "DYNAMIC") \
         .getOrCreate()
-    
+
     spark.conf.set("spark.sql.legacy.timeParserPolicy", "LEGACY")
 
 
@@ -121,7 +122,7 @@ if __name__ == "__main__":
 )
 
     # add date_id column
-    updated_df = updated_df.withColumn("date_id", col("new.trace_date").substr(1, 10).cast(IntegerType()))
+    # updated_df = updated_df.withColumn("date_id", col("new.trace_date").substr(1, 10).cast(IntegerType()))
 
     # select the columns to be saved in cassandra
     current_date = datetime.now()
@@ -151,7 +152,7 @@ if __name__ == "__main__":
 
 
 
-    updated_df = updated_df.select("last_oil_change", "car_age","fuel_change","power_supply_voltage","new.thing_id", "date_id",  "avg_speed", "max_speed", "idle_time", "active_time", "full_date","new.longitude","new.latitude","new.trace_date","traveled_distance","oil_value","engine_status","fuel_liters","fuel_percent")
+    updated_df = updated_df.select("last_oil_change", "car_age","fuel_change","power_supply_voltage","new.thing_id",  "avg_speed", "max_speed", "idle_time", "active_time", "full_date","new.longitude","new.latitude","new.trace_date","traveled_distance","oil_value","engine_status","fuel_liters","fuel_percent")
 
 
 
@@ -265,10 +266,30 @@ if __name__ == "__main__":
         return int(predicted_class)
     
     # Apply the model to the incoming DataFrame
-    updated_df = updated_df.withColumn('year', mlp(updated_df['car_age'], updated_df['fuel_change'], updated_df['last_oil_change'], updated_df['power_supply_voltage'], updated_df['oil_value'], updated_df['fuel_liters'], updated_df['engine_status']))
+    updated_df = updated_df.withColumn('maintenance', mlp(updated_df['car_age'], updated_df['fuel_change'], updated_df['last_oil_change'], updated_df['power_supply_voltage'], updated_df['oil_value'], updated_df['fuel_liters'], updated_df['engine_status']))
 
 
     updated_df = updated_df.drop("last_oil_change", "car_age","fuel_change","power_supply_voltage","engine_status","oil_value","fuel_liters","fuel_percent")
+    updated_df = updated_df.withColumn('fuel', lit(1))
+
+
+    # Get today's date
+    today = F.current_date()
+
+    # Add the new attributes to the DataFrame
+    updated_df = updated_df.withColumn('full_date', F.date_format(today, 'yyyy-MM-dd'))
+    updated_df = updated_df.withColumn('year', F.year(today))
+    updated_df = updated_df.withColumn('month', F.month(today))
+    updated_df = updated_df.withColumn('day', F.dayofmonth(today))
+    updated_df = updated_df.withColumn('month_year', F.date_format(today, 'yyyy-MM'))
+    updated_df = updated_df.withColumn('month_name', F.date_format(today, 'MMMM'))
+    updated_df = updated_df.withColumn('quarter', F.quarter(today))
+    updated_df = updated_df.withColumn('day_type', F.when(F.dayofweek(today).isin([1, 7]), 'Weekend').otherwise('Weekday'))
+    updated_df = updated_df.withColumn('season', F.when(F.month(today).isin([12, 1, 2]), 'Winter')
+                                    .when(F.month(today).isin([3, 4, 5]), 'Spring')
+                                    .when(F.month(today).isin([6, 7, 8]), 'Summer')
+                                    .otherwise('Fall'))
+
 
 # Now df includes a new column 'is_speeding' with the model's predictions
 

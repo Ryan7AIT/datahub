@@ -662,6 +662,7 @@ async def get_realtime_data(thing_id: str) -> Union[list, None]:
             "longitude": row.long,
             "speed": row.speed,
             "oil_value": row.oil_value,
+            "battery": row.battery
         })
 
     # Close the connection
@@ -3256,7 +3257,8 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
 async def get_journies(page: int = 1, thing_id: Optional[int]=None, group_id: Optional[int]=None,type_id: Optional[int]=None ,years: Optional[str] = None, months: Optional[str] = None, d1: Optional[str] = None, d2: Optional[str] = None) -> Union[list, None]:
     """
         get the last 5 journeies
-    """
+    """ 
+
 
     # Calculate the offset
     offset = (page - 1) * 5
@@ -3343,6 +3345,8 @@ async def get_journies(page: int = 1, thing_id: Optional[int]=None, group_id: Op
             "end_time": row[7],
             "path": row[8]
         })
+
+    # return [11]
     return result
 
 
@@ -3361,6 +3365,7 @@ async def get_journies(page: int = 1, thing_id: Optional[int]=None, group_id: Op
 async def get_journies_count(thing_id: Optional[int]=None, group_id: Optional[int]=None,type_id: Optional[int]=None ,years: Optional[str] = None, months: Optional[str] = None, d1: Optional[str] = None, d2: Optional[str] = None) -> Union[list, None]:
     """
     """
+    
 
     select_query = f"""
             SELECT
@@ -3565,3 +3570,42 @@ async def get_historical_fuel() -> Union[list, None]:
     # make a dict from that list
     return [fuel,date]
 
+
+
+# define a route to get the historical battery volatge
+@app.get('/historical/battery')
+async def get_historical_battery() -> Union[list, None]:
+    """
+    """
+
+
+        # Connect to Cassandra
+    cluster = Cluster(['localhost'])
+    session = cluster.connect()
+
+
+    # Use the keyspace
+    session.set_keyspace('pfe')
+    session.row_factory = dict_factory
+
+
+
+    select_query = f"""
+                select * from trace where thing_id = '627' ORDER BY trace_date DESC limit 100 ;      
+        """
+    
+
+   
+    rows = session.execute(select_query)
+
+    rows = list(rows)
+    
+    # Create two lists: one for the distances and one for the dates
+    battery = [row['battery_voltage'] for row in rows]
+    date = [row['trace_date'] for row in rows]
+
+    date = [datetime.datetime.strptime(row['trace_date'], '%Y-%m-%d %H:%M:%S.%f').strftime('%M:%S') for row in rows]    # Close connection
+    session.shutdown()
+
+    # make a dict from that list
+    return [battery,date]

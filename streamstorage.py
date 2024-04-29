@@ -31,6 +31,7 @@ session.execute("""
     oil_value int,
     fuel_liters int,
     fuel_percent int,
+                battery int,
     PRIMARY KEY (thing_id, trace_date)
 ) WITH CLUSTERING ORDER BY (trace_date DESC);
                 """
@@ -46,7 +47,6 @@ session.execute("""
                 traveled_distance int,
                 avg_speed int,
                 max_speed int,
-                date_id int,
                 full_date text,
                 year int,
                 month int,
@@ -57,14 +57,37 @@ session.execute("""
                 day_type text,
                 season text,
                 thing_id int,
-                thing_name text,
-                thing_type text,
-                thing_plate text,
                 latitude double,
                 longitude double,
                 trace_date text,
+                maintenance int,
+                fuel int,
                 PRIMARY KEY (thing_id)
 ) ;
+                """
+                )
+
+
+# create analytic object table alert
+session.execute("""
+                
+                CREATE TABLE IF NOT EXISTS pfe.alert (
+                alert_id text,
+                thing_id text,
+                alert_deg_id int,
+                alert_deg text,
+                alert_number int,
+                full_date text,
+                year int,
+                month int,
+                day int,
+                month_year text,
+                month_name text,
+                quarter text,
+                day_type text,
+                season text,
+                PRIMARY KEY (thing_id)
+);
                 """
                 )
 
