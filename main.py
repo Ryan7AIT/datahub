@@ -557,7 +557,7 @@ async def get_alerts(thing_id: Optional[int]=None, group_id: Optional[int]=None,
     if thing_id :
         select_query += f" AND t.thing_id = {thing_id} group by f.alert_degree_id"
 
-    if group_id:
+    elif group_id:
         select_query += f" AND t.group_id = {group_id} group by f.alert_degree_id"
     elif type_id:
         select_query += f" AND t.type_id = {type_id} group by f.alert_degree_id"
@@ -859,7 +859,8 @@ async def get_thing_groups():
     """
     select_query = """
 SELECT DISTINCT
-    group_id
+    group_id,
+    group_name
     FROM
     thing_dim
     limit 10
@@ -872,7 +873,7 @@ SELECT DISTINCT
     for row in rows:
         data.append({
             "group_id": row[0],
-            "thing_group_designation": 'group name'
+            "thing_group_designation": row[1]
         })
 
 
@@ -1732,7 +1733,7 @@ async def get_speed(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                 AND v.thing_id = t.thing_id
                                 AND year = {years}
                                 AND month = {months}
-                        AND v.type_id = {type_id}
+                        AND t.type_id = {type_id}
                                     GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
                                         
                                     """
@@ -1945,7 +1946,7 @@ async def get_fuel(thing_id: Optional[int]=None, group_id: Optional[int]=None, t
                 cassandra_df = cassandra_df.filter(cassandra_df['thing_id'] == str(thing_id))
 
             else:
-                cassandra_df = cassandra_df.groupBy("full_date").agg(F.sum("fuel_consumed").alias("fuel_consumed"))
+                cassandra_df = cassandra_df.groupBy("full_date").agg(F.sum("fuel").alias("fuel_consumed"))
 
 
 
@@ -2041,7 +2042,7 @@ async def get_fuel(thing_id: Optional[int]=None, group_id: Optional[int]=None, t
                                 AND v.thing_id = t.thing_id
                                 AND year = {years}
                                 AND month = {months}
-                        AND v.type_id = {type_id}
+                        AND t.type_id = {type_id}
                                         
                                     GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
                                     """
@@ -2051,8 +2052,7 @@ async def get_fuel(thing_id: Optional[int]=None, group_id: Optional[int]=None, t
             else:
                     
                     df_mysq1 = spark.read.format('jdbc').\
-                    option
-                    ('url', 'jdbc:postgresql://localhost:5432/geopfe').\
+                    option('url', 'jdbc:postgresql://localhost:5432/geopfe').\
                     option("driver", "org.postgresql.Driver").\
                     option('user', 'postgres').\
                     option('password', 'ryqn').\
@@ -2105,11 +2105,14 @@ async def get_fuel(thing_id: Optional[int]=None, group_id: Optional[int]=None, t
             """
 
             if thing_id:
-                select_query += f" AND v.thing_id = {thing_id} group by \"day\", full_date"
+                select_query += f" AND v.thing_id = {thing_id} group by \"day\", d.full_date"
             elif group_id:
-                select_query += f" AND t.group_id = {group_id} group by \"day\", full_date"
+                select_query += f" AND t.group_id = {group_id} group by \"day\", d.full_date"
             elif type_id:
-                select_query += f" AND t.type_id = {type_id} group by \"day\", full_date"
+                select_query += f" AND t.type_id = {type_id} group by \"day\", d.full_date"
+
+            else :
+                select_query += " group by \"day\", d.full_date"
         
         cursor_postgres.execute(select_query)
         rows = cursor_postgres.fetchall()
@@ -2539,7 +2542,7 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                 AND v.thing_id = t.thing_id
                                 AND year = {years}
                                 AND month = {months}
-                        AND v.type_id = {type_id}
+                        AND t.type_id = {type_id}
                                         
                                     GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
                                     """
@@ -2819,7 +2822,7 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                 AND v.thing_id = t.thing_id
                                 AND year = {years}
                                 AND month = {months}
-                        AND v.type_id = {type_id}
+                        AND t.type_id = {type_id}
                                         
                                     GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
                                     """
@@ -2889,6 +2892,8 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                 select_query += f" AND t.group_id = {group_id} group by \"day\", full_date"
             elif type_id:
                 select_query += f" AND t.type_id = {type_id} group by \"day\", full_date"
+            else:
+                select_query += " group by \"day\", full_date"
 
         cursor_postgres.execute(select_query)
         rows = cursor_postgres.fetchall()
@@ -3073,7 +3078,7 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                 AND month = {months}
                         AND v.group_id = {group_id}
                                         
-                                    GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
+                                    GROUP by   d.full_date, TO_CHAR(d.full_date, 'Day') 
                                     """
                 ).\
                 load()
@@ -3101,7 +3106,7 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                 AND v.thing_id = t.thing_id
                                 AND year = {years}
                                 AND month = {months}
-                        AND v.type_id = {type_id}
+                        AND t.type_id = {type_id}
                                         
                                     GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
                                     """
@@ -3171,6 +3176,10 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                 select_query += f" AND t.group_id = {group_id} group by \"day\", full_date"
             elif type_id:
                  select_query += f" AND t.type_id = {type_id} group by \"day\", full_date"
+
+            else:
+                select_query += " group by \"day\", full_date"
+                 
 
         cursor_postgres.execute(select_query)
         rows = cursor_postgres.fetchall()
