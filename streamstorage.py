@@ -57,6 +57,8 @@ session.execute("""
                 day_type text,
                 season text,
                 thing_id int,
+                type_id int,
+                group_id int,
                 latitude double,
                 longitude double,
                 trace_date text,

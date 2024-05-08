@@ -690,7 +690,46 @@ async def get_cars(thing_id: Optional[int]=None, group_id: Optional[int]=None, t
     # Use the keyspace
     session.set_keyspace('pfe')
 
-    select_query = f"""
+    if (thing_id):
+
+        select_query = f"""
+    SELECT
+        *
+    FROM
+        vehicle_performance
+
+    where thing_id={thing_id}
+        """     
+
+    elif (type_id):
+             
+            select_query = f"""
+    SELECT
+        *
+    FROM
+        vehicle_performance
+
+    where type_id={type_id}
+ALLOW FILTERING
+        """
+
+        
+
+    elif (group_id):
+             
+            select_query = f"""
+    SELECT
+        *
+    FROM
+        vehicle_performance
+
+    where group_id={group_id}
+ALLOW FILTERING
+
+        """
+
+    else:
+        select_query = f"""
     SELECT
         *
     FROM
@@ -2712,7 +2751,7 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
         # Extract the month number from the current date
         month_number = current_date.month
 
-        if (months ==  str(month_number)):
+        if (months ==  '333333'):
         
 
 
@@ -2996,7 +3035,7 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
         # Extract the month number from the current date
         month_number = current_date.month
 
-        if (months ==  str(month_number)):
+        if (months ==  'ssssss'):
         
 
 
