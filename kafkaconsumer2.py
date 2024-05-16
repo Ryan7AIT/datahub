@@ -240,8 +240,8 @@ if __name__ == "__main__":
         # Define a user-defined function that applies the model
     @udf(IntegerType())
     def mlp(engine_status, power_supply_voltage, oil_value, fuel_liters, fuel_change, car_age, last_oil_change):
-        model = load_model('pm_model.h5')
-        scaler = joblib.load('/Users/mac/prediction/my_scaler.pkl')
+        model = load_model('/Users/mac/Desktop/pm_model.h5')
+        scaler = joblib.load('/Users/mac/Desktop/my_scaler.pkl')
 
 
         # prediction = model.predict(np.array([[engine_status], [power_supply_voltage], [oil_value], [fuel_liters], [fuel_change], [car_age], [last_oil_change]]))
@@ -269,8 +269,7 @@ if __name__ == "__main__":
     updated_df = updated_df.withColumn('maintenance', mlp(updated_df['car_age'], updated_df['fuel_change'], updated_df['last_oil_change'], updated_df['power_supply_voltage'], updated_df['oil_value'], updated_df['fuel_liters'], updated_df['engine_status']))
 
 
-    updated_df = updated_df.drop("last_oil_change", "car_age","fuel_change","power_supply_voltage","engine_status","oil_value","fuel_liters","fuel_percent")
-    updated_df = updated_df.withColumn('fuel', lit(1))
+    updated_df = updated_df.withColumn('fuel', lit(0.14))
 
 
     # Get today's date
@@ -294,6 +293,74 @@ if __name__ == "__main__":
 # Now df includes a new column 'is_speeding' with the model's predictions
 
 
+
+    # =======================================================
+    # =======================================================
+    # =======================================================
+    # =======================================================
+    # =======================================================
+    # =======================================================
+    # =======================================================
+    # =======================================================
+    # =======================================================
+    # =======================================================
+    # =======================================================
+
+    # predict the rul of the car 
+
+
+
+
+    @udf(FloatType())
+    def predict_rul():
+
+        # Load the model and scaler
+        model = joblib.load('/Users/mac/Desktop/random_forest_model.joblib')
+        scaler = joblib.load('/Users/mac/Desktop/scaler.joblib')
+
+
+        features = np.array([[1599, 1.2, 0.3, 0.14, 0.5, 0.9, 0.7, 0.8, 0.9, 1.2, 1.1, 1.2, 1.3]])
+
+        # Convert the inputs to a 2D array
+        # features = np.array([[car_age, fuel_change, last_oil_change, power_supply_voltage, oil_value, fuel_liters, engine_status]])
+        
+        # Scale the features using the saved scaler
+        features_scaled = scaler.transform(features)
+        
+        # Apply the model
+        prediction = model.predict(features_scaled)
+
+        return float(prediction[0])
+
+
+
+    # Apply the model to the incoming DataFrame
+    updated_df = updated_df.withColumn('rul', predict_rul())
+
+
+
+
+
+
+
+
+
+
+
+    updated_df = updated_df.drop("last_oil_change", "car_age","fuel_change","power_supply_voltage","engine_status","oil_value","fuel_liters","fuel_percent")
+
+
+    # =======================================================
+    # =======================================================
+    # =======================================================
+    # =======================================================
+    # =======================================================
+    # =======================================================
+    # =======================================================
+    # =======================================================
+    # =======================================================
+    # =======================================================
+    # =======================================================
 
 
 

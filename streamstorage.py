@@ -63,6 +63,7 @@ session.execute("""
                 longitude double,
                 trace_date text,
                 maintenance int,
+                rul float,
                 fuel int,
                 PRIMARY KEY (thing_id)
 ) ;
