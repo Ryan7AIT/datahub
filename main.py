@@ -13,6 +13,7 @@ from cassandra.query import dict_factory
 import datetime
 from pyspark.sql import functions as F
 from geopy.geocoders import Nominatim
+import math
 # from datetime import datetime
 
 def get_street_address(p):
@@ -797,7 +798,8 @@ async def get_cars(thing_id: str):
             "active_time": row.active_time,
             "avg_speed": row.avg_speed,
             "max_speed": row.max_speed,
-            "prediction": row.year,
+            "prediction": row.maintenance,
+            "rul": math.ceil(row.rul) 
         })
     return result
 
