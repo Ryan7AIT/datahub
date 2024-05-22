@@ -29,6 +29,9 @@ if __name__ == "__main__":
         .option("subscribe", "iotevents") \
         .option("startingOffsets", "latest") \
         .load()
+    
+
+ 
 
     # Define your schema (replace with your actual schema)
     schema = StructType() \
@@ -62,53 +65,33 @@ if __name__ == "__main__":
 
     updated_df = df.alias('new').join(existing_df.alias('old'), 'thing_id', 'leftouter')
 
-    # Calculate the new measurements based on the event data and the current state
-    # TODO: Replace this with your actual calculation logic
-    # updated_df = updated_df.withColumn("avg_speed", col("old.avg_speed") + col("new.speed"))
-    #cehck if column is not null
     updated_df = updated_df.withColumn('avg_speed', F.when(F.col('old.avg_speed').isNull(), F.col('new.speed')).otherwise((F.col('new.speed') + F.col('old.avg_speed')) /2))
     updated_df = updated_df.withColumn('max_speed', F.when(F.col('old.max_speed').isNull(), F.col('new.speed')).otherwise(F.when(F.col('new.speed') > F.col('old.max_speed'), F.col('new.speed')).otherwise(F.col('old.max_speed'))))
-    updated_df = updated_df.withColumn('idle_time', F.when(F.col('old.idle_time').isNull(), 0).otherwise(F.when(F.col('new.engine_status') == 'stoped', F.col('old.idle_time') + ((F.unix_timestamp('new.trace_date') - F.unix_timestamp('old.trace_date')) )).otherwise(F.col('old.active_time'))))
-    updated_df = updated_df.withColumn('active_time', F.when(F.col('old.active_time').isNull(), 0).otherwise(F.when(F.col('new.engine_status') == 'running', F.col('old.active_time') + ((F.unix_timestamp('new.trace_date') - F.unix_timestamp('old.trace_date')) )).otherwise(F.col('old.active_time'))))
+    updated_df = updated_df.withColumn('idle_time', F.when(F.col('old.idle_time').isNull(), 0).otherwise(F.when(F.col('new.engine_status') == 0, F.col('old.idle_time') + ((F.unix_timestamp('new.trace_date') - F.unix_timestamp('old.trace_date')) )).otherwise(F.col('old.active_time'))))
+    updated_df = updated_df.withColumn('active_time', F.when(F.col('old.active_time').isNull(), 0).otherwise(F.when(F.col('new.engine_status') == 1, F.col('old.active_time') + ((F.unix_timestamp('new.trace_date') - F.unix_timestamp('old.trace_date')) )).otherwise(F.col('old.active_time'))))
 
+    updated_df = updated_df.withColumn('fuel', F.when(F.col('old.fuel').isNull(), F.col('new.fuel_liters')).otherwise(F.col('old.fuel') + F.col('new.fuel_liters')))
 
-
-    # updated_df = updated_df.withColumn('idle_time', F.when(F.col('old.idle_time').isNull(), 0).otherwise(F.when(F.col('new.engine_status') == 'stoped', F.col('old.idle_time') + 1).otherwise(F.col('old.active_time'))))
-    
-    # updated_df = updated_df.withColumn('active_time', F.when(F.col('old.active_time').isNull(), 1).otherwise(F.when(F.col('new.engine_status') == 'running', F.col('old.active_time') + 1).otherwise(F.col('old.active_time'))))
 
     # Define the haversine function
     def haversine(lat1, lon1, lat2, lon2):
-        # R = 6371.0
-        # lat1 = radians(lat1)
-        # lon1 = radians(lon1)
-        # lat2 = radians(lat2)
-        # lon2 = radians(lon2)
-        # dlon = lon2 - lon1
-        # dlat = lat2 - lat1
-        # a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
-        # c = 2 * atan2(sqrt(a), sqrt(1 - a))
-        # distance = R * c
-        return 1
-
-    # updated_df = updated_df.withColumn('active_time', F.when(F.col('new.engine_status') == 'running', F.col('old.active_time') + 1).otherwise(F.col('old.active_time')))
-    # updated_df = updated_df.withColumn('total_distance', F.when(F.col('old.total_distance').isNull(), 0).otherwise(F.col('old.total_distance') + F.sqrt((F.col('new.long') - F.col('old.long'))**2 + (F.col('new.lat') - F.col('old.lat'))**2)))
-    # updated_df = updated_df.withColumn('total_distance', F.when(F.col('old.total_distance').isNull(), 0).otherwise(F.col('old.total_distance') + 1))
+        R = 6371.0
+        lat1 = radians(lat1)
+        lon1 = radians(lon1)
+        lat2 = radians(lat2)
+        lon2 = radians(lon2)
+        dlon = lon2 - lon1
+        dlat = lat2 - lat1
+        a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
+        c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        distance = R * c
+        return distance
 
 
     # Register the haversine function as a UDF
     haversine_udf = F.udf(haversine, FloatType())
 
-    # Calculate the distance and add it to the total distance
-    # updated_df = updated_df.withColumn(
-    #     'traveled_distance', 
-    #     F.when(
-    #         F.col('old.traveled_distance').isNull(), 
-    #         0
-    #     ).otherwise(
-    #         F.col('old.traveled_distance') + haversine_udf(F.col('old.latitude'), F.col('old.longitude'), F.col('new.latitude'), F.col('new.longitude'))
-    #     )
-    # )
+
 
 
     updated_df = updated_df.withColumn(
@@ -120,9 +103,6 @@ if __name__ == "__main__":
         F.col('old.traveled_distance') + haversine_udf(F.col('old.latitude'), F.col('old.longitude'), F.col('new.latitude'), F.col('new.longitude'))
     )
 )
-
-    # add date_id column
-    # updated_df = updated_df.withColumn("date_id", col("new.trace_date").substr(1, 10).cast(IntegerType()))
 
     # select the columns to be saved in cassandra
     current_date = datetime.now()
@@ -145,70 +125,27 @@ if __name__ == "__main__":
 
     updated_df = updated_df.withColumn("last_oil_change", lit(1))
     updated_df = updated_df.withColumn("car_age", lit(1))
-    updated_df = updated_df.withColumn("fuel_change", lit(2))
+    updated_df = updated_df.withColumn("fuel_change", lit(0.020))
     updated_df = updated_df.withColumn("power_supply_voltage", lit(10))
 
 
+    updated_df = updated_df.withColumn("oil_rolling_mean", lit(1.2))
+    updated_df = updated_df.withColumn("fuel_rolling_mean", lit(0.3))
+    updated_df = updated_df.withColumn("oil_rolling_stddev", lit(0.14))
+    updated_df = updated_df.withColumn("fuel_rolling_stddev", lit(0.0016))
+    updated_df = updated_df.withColumn("oil_cumsum", lit(0.9))
+    updated_df = updated_df.withColumn("fuel_cumsum", lit(0.7))
+    updated_df = updated_df.withColumn("oil_min", lit(0.8))
+    updated_df = updated_df.withColumn("fuel_min", lit(1.2))
+    updated_df = updated_df.withColumn("oil_max", lit(1.1))
+    updated_df = updated_df.withColumn("fuel_max", lit(1.3))
 
 
 
-    updated_df = updated_df.select("last_oil_change", "car_age","fuel_change","power_supply_voltage","new.thing_id",  "avg_speed", "max_speed", "idle_time", "active_time", "full_date","new.longitude","new.latitude","new.trace_date","traveled_distance","oil_value","engine_status","fuel_liters","fuel_percent")
 
 
 
-    #     # Load the model from the file
-    # with open('speeding_model.pkl', 'rb') as file:
-    #     model = pickle.load(file)
-
-        # Later, load the model\
-
-  
-
-    # Define a user-defined function that applies the model
-    # @udf(IntegerType())
-    # def predict_speeding(engine_status, power_supply_voltage, oil_value, fuel_liters, fuel_change, car_age, last_oil_change):
-    #     # prediction = model.predict(np.array([[engine_status, power_supply_voltage, oil_value, fuel_liters, fuel_change, car_age, last_oil_change]]))
-    #     # prediction = model.predict(np.array([[speed]]))
-    #     return 1
-    #     # return int(prediction[0])
-
-    # @udf(IntegerType())
-    # def predict_speeding2(engine_status):
-    #     # prediction = model.predict(np.array([[engine_status, power_supply_voltage, oil_value, fuel_liters, fuel_change, car_age, last_oil_change]]))
-    #     # prediction = model.predict(np.array([[speed]]))
-    #     return 1
-    
-
-    # Define a user-defined function that applies the model
-    # @udf(IntegerType())
-    # def predict_speeding(row):
-    #     features = [row['engine_status'], row['power_supply_voltage'], row['oil_value'], row['fuel_liters'], row['fuel_change'], row['car_age'], row['last_oil_change']]
-    #     prediction = model.predict([features])
-    #     return int(prediction[0])
-
-
-    # # Apply the model to the incoming DataFrame
-    # updated_df = updated_df.withColumn('s', lit(predict_speeding2(to_predict["engine_status"])))
-
-    # updated_df = updated_df.withColumn('s', predict_speeding2(to_predict["engine_status"]))
-
-
-    # Apply the model to the to_predict DataFrame
-    # to_predict = to_predict.withColumn('s', predict_speeding2(to_predict["engine_status"]))
-
-
-    # Apply the function to the list
-    # prediction = predict_speeding2(to_predict["engine_status"])
-
-    # Add the prediction as a new column to the updated_df DataFrame
-    # updated_df = updated_df.withColumn('s', lit(prediction))
-
-    # Join the original DataFrame with the predictions
-    # updated_df = updated_df.join(to_predict, on=['thing_id'], how='left')
-    # updated_df = updated_df.withColumn('is_speeding', lit(predict_speeding(to_predict['engine_status'],to_predict['power_supply_voltage'], to_predict['oil_value'], to_predict['fuel_liters'], to_predict['fuel_change'], to_predict['car_age'], to_predict['last_oil_change'])))
-    # print(updated_df.show(2))
-    
-
+    updated_df = updated_df.select("last_oil_change", "fuel", "car_age","fuel_change","power_supply_voltage","new.thing_id",  "avg_speed", "max_speed", "idle_time", "active_time", "full_date","new.longitude","new.latitude","new.trace_date","traveled_distance","oil_value","engine_status","fuel_liters","fuel_percent","oil_rolling_mean","fuel_rolling_mean","oil_rolling_stddev","fuel_rolling_stddev","oil_cumsum","fuel_cumsum","oil_min","fuel_min","oil_max","fuel_max")
 
 
 
@@ -269,7 +206,7 @@ if __name__ == "__main__":
     updated_df = updated_df.withColumn('maintenance', mlp(updated_df['car_age'], updated_df['fuel_change'], updated_df['last_oil_change'], updated_df['power_supply_voltage'], updated_df['oil_value'], updated_df['fuel_liters'], updated_df['engine_status']))
 
 
-    updated_df = updated_df.withColumn('fuel', lit(0.14))
+    # updated_df = updated_df.withColumn('fuel', lit(0.14))
 
 
     # Get today's date
@@ -310,32 +247,47 @@ if __name__ == "__main__":
 
 
 
-
+    rfmodel = joblib.load('/Users/mac/Desktop/rulligh/random_forest_model.joblib')
+    scaler = joblib.load('/Users/mac/Desktop/rulligh/scaler.joblib')
+    
     @udf(FloatType())
-    def predict_rul():
+    def predict_rul(thing_id, oil_value, fuel_change, oil_rolling_mean, fuel_rolling_mean, oil_rolling_stddev, fuel_rolling_stddev, oil_cumsum, fuel_cumsum, oil_min, fuel_min, oil_max, fuel_max):
 
         # Load the model and scaler
-        model = joblib.load('/Users/mac/Desktop/random_forest_model.joblib')
-        scaler = joblib.load('/Users/mac/Desktop/scaler.joblib')
+        # model = joblib.load('/Users/mac/Desktop/random_forest_model.joblib')
+        # scaler = joblib.load('/Users/mac/Desktop/scaler.joblib')
 
 
-        features = np.array([[1599, 1.2, 0.3, 0.14, 0.5, 0.9, 0.7, 0.8, 0.9, 1.2, 1.1, 1.2, 1.3]])
 
-        # Convert the inputs to a 2D array
-        # features = np.array([[car_age, fuel_change, last_oil_change, power_supply_voltage, oil_value, fuel_liters, engine_status]])
+
+        
+
+
+        features = np.array([[thing_id, oil_value, fuel_change, oil_rolling_mean, fuel_rolling_mean, oil_rolling_stddev, fuel_rolling_stddev, oil_cumsum, fuel_cumsum, oil_min, fuel_min, oil_max, fuel_max]])
+
         
         # Scale the features using the saved scaler
         features_scaled = scaler.transform(features)
         
         # Apply the model
-        prediction = model.predict(features_scaled)
+        # prediction = rfmodel.predict(features_scaled)
 
-        return float(prediction[0])
+
+        return 12345
+        # return float(prediction[0])
 
 
 
     # Apply the model to the incoming DataFrame
-    updated_df = updated_df.withColumn('rul', predict_rul())
+    updated_df = updated_df.withColumn('rul', predict_rul(updated_df['thing_id'], updated_df['oil_value'], updated_df['fuel_change'], updated_df['oil_rolling_mean'], updated_df['fuel_rolling_mean'], updated_df['oil_rolling_stddev'], 
+                                                          updated_df['fuel_rolling_stddev'], updated_df['oil_cumsum'], updated_df['fuel_cumsum'], updated_df['oil_min'], updated_df['fuel_min'], updated_df['oil_max'], updated_df['fuel_max']))
+
+
+# features = [ 'thing_id', 'oil_value', 'fuel_change', 'oil_rolling_mean', 'fuel_rolling_mean',
+#             'oil_rolling_stddev', 'fuel_rolling_stddev',
+#             'oil_cumsum', 'fuel_cumsum',
+#             'oil_min', 'fuel_min',
+#             'oil_max', 'fuel_max']
 
 
 
@@ -344,10 +296,7 @@ if __name__ == "__main__":
 
 
 
-
-
-
-    updated_df = updated_df.drop("last_oil_change", "car_age","fuel_change","power_supply_voltage","engine_status","oil_value","fuel_liters","fuel_percent")
+    updated_df = updated_df.drop("last_oil_change", "car_age","fuel_change","power_supply_voltage","engine_status","oil_value","fuel_liters","fuel_percent","oil_rolling_mean","fuel_rolling_mean","oil_rolling_stddev","fuel_rolling_stddev","oil_cumsum","fuel_cumsum","oil_min","fuel_min","oil_max","fuel_max")
 
 
     # =======================================================
@@ -407,7 +356,7 @@ if __name__ == "__main__":
           .save()
 
     
-    # Write the streaming data to Cassandra
+    # # Write the streaming data to Cassandra
     query = updated_df \
         .writeStream \
         .outputMode("append") \

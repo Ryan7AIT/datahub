@@ -2,7 +2,7 @@
 from ast import List
 from typing import Optional, Union
 from cassandra.cluster import Cluster
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import psycopg2
 from cassandra.cluster import Cluster
@@ -15,6 +15,12 @@ from pyspark.sql import functions as F
 from geopy.geocoders import Nominatim
 import math
 # from datetime import datetime
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from pydantic import BaseModel
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from typing import Optional
 
 def get_street_address(p):
     latitude , longitude = p.split(',')
@@ -61,11 +67,19 @@ origins = [
     "http://localhost:4200",  # Update with the origin of your Angular app
 ]
 
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=origins,
+#     allow_credentials=True,
+#     allow_methods=["GET", "POST", "PUT", "DELETE"],
+#     allow_headers=["*"],
+# )
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
@@ -1422,8 +1436,8 @@ async def get_thing(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                             WHERE
                                 v.date_id = d.date_id
                                 AND v.thing_id = t.thing_id
-                                AND year = 2024
-                                AND month = 3
+                                AND year = {years}
+                                AND month = {months}
                         AND v.thing_id = {thing_id}
                                     
                                 GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
@@ -1454,8 +1468,8 @@ async def get_thing(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                        WHERE
                                        v.date_id = d.date_id
                                        AND v.thing_id = t.thing_id
-                                       AND year = 2024
-                                       AND month = 3
+                                AND year = {years}
+                                AND month = {months}
                                        AND t.group_id = {group_id}
 
                                        GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day')
@@ -1486,8 +1500,8 @@ async def get_thing(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                             WHERE
                                 v.date_id = d.date_id
                                 AND v.thing_id = t.thing_id
-                                AND year = 2024
-                                AND month = 3
+                                AND year = {years}
+                                AND month = {months}
                                     
                                 GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
                                 """
@@ -1664,7 +1678,6 @@ async def get_speed(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
 
 
 
-
             # Load the Cassandra table into a DataFrame
             cassandra_df = spark.read \
                 .format("org.apache.spark.sql.cassandra") \
@@ -1742,7 +1755,7 @@ async def get_speed(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                     AND v.thing_id = t.thing_id
                                     AND year = {years}
                                     AND month = {months}
-                            AND v.group_id = {group_id}
+                            AND t.group_id = {group_id}
                                         GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
                                             
                                         """
@@ -1825,6 +1838,8 @@ async def get_speed(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
             return [r,r2,r3]
         
         else:
+
+
             select_query = f"""
 
             SELECT 
@@ -2052,7 +2067,7 @@ async def get_fuel(thing_id: Optional[int]=None, group_id: Optional[int]=None, t
                                 AND v.thing_id = t.thing_id
                                 AND year = {years}
                                 AND month = {months}
-                        AND v.group_id = {group_id}
+                        AND t.group_id = {group_id}
                                         
                                     GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
                                     """
@@ -2267,7 +2282,7 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
             # Load the Cassandra table into a DataFrame
             cassandra_df = spark.read \
                 .format("org.apache.spark.sql.cassandra") \
-                .options(table="vehicle_performance", keyspace="pfe") \
+                .options(table="alert", keyspace="pfe") \
                 .load()
             
             
@@ -2367,7 +2382,7 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                 AND v.thing_id = t.thing_id
                 AND \"year\" = {years}
                 AND \"month\" = {months}
-                AND alert_degree_id = 0
+                AND alert_degree_id = 1
             GROUP BY
                 \"day\", full_date
             """
@@ -2392,7 +2407,7 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                 v.date_id = d.date_id
                 AND v.thing_id = t.thing_id
                 AND \"year\" = {years}
-                AND alert_degree_id = 0
+                AND alert_degree_id = 1
         """
 
         if thing_id:
@@ -2425,7 +2440,7 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
             WHERE
                 v.date_id = d.date_id
                 AND v.thing_id = t.thing_id
-                AND alert_degree_id = 0
+                AND alert_degree_id = 1
 
         """
 
@@ -2553,7 +2568,7 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                 AND v.thing_id = t.thing_id
                                 AND year = {years}
                                 AND month = {months}
-                        AND v.group_id = {group_id}
+                        AND t.group_id = {group_id}
                                         
                                     GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
                                     """
@@ -2833,7 +2848,7 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                 AND v.thing_id = t.thing_id
                                 AND year = {years}
                                 AND month = {months}
-                        AND v.group_id = {group_id}
+                        AND t.group_id = {group_id}
                                         
                                     GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
                                     """
@@ -3117,7 +3132,7 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                 AND v.thing_id = t.thing_id
                                 AND year = {years}
                                 AND month = {months}
-                        AND v.group_id = {group_id}
+                        AND t.group_id = {group_id}
                                         
                                     GROUP by   d.full_date, TO_CHAR(d.full_date, 'Day') 
                                     """
@@ -3559,7 +3574,7 @@ async def get_historical_oil() -> Union[list, None]:
 
 
     select_query = f"""
-                select * from trace where thing_id = '627' ORDER BY trace_date DESC limit 100 ;      
+                select * from trace where thing_id = '1599' ORDER BY trace_date DESC limit 100 ;      
         """
     
 
@@ -3601,7 +3616,7 @@ async def get_historical_fuel() -> Union[list, None]:
 
 
     select_query = f"""
-                select * from trace where thing_id = '627' ORDER BY trace_date DESC limit 100 ;      
+                select * from trace where thing_id = '1599' ORDER BY trace_date DESC limit 100 ;      
         """
     
 
@@ -3641,7 +3656,7 @@ async def get_historical_battery() -> Union[list, None]:
 
 
     select_query = f"""
-                select * from trace where thing_id = '627' ORDER BY trace_date DESC limit 100 ;      
+                select * from trace where thing_id = '1599' ORDER BY trace_date DESC limit 100 ;      
         """
     
 
@@ -3659,3 +3674,63 @@ async def get_historical_battery() -> Union[list, None]:
 
     # make a dict from that list
     return [battery,date]
+
+
+
+
+
+# #######################################
+# #######################################
+# #######################################
+# #######################################
+# #######################################
+# #######################################
+# #######################################
+# #######################################
+# #######################################
+# #######################################
+# #######################################
+# #######################################
+# LOGIN
+
+
+
+
+
+
+
+# Secret key to encode the JWT token
+SECRET_KEY = "your-secret-key"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+# Fake database
+fake_users_db = {
+        "username": "p",
+        "email": "p",
+        "password": "p",  
+        "disabled": False,
+}
+
+class LoginForm(BaseModel):
+    username: str
+    password: str
+
+@app.post("/login")
+async def login(username: str = Form(...), password: str = Form(...)):
+    password2 = fake_users_db["password"] 
+    user = fake_users_db.get(username)
+
+
+
+
+    if  password2 != password:
+
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            # return tge user name and password
+            detail="Invalid username or password " ,
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return {"message": "Login successful"}
+
