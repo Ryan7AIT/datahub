@@ -75,10 +75,12 @@ session.execute("""
 session.execute("""
                 
                 CREATE TABLE IF NOT EXISTS pfe.alert (
-                alert_id text,
-                thing_id text,
-                alert_deg_id int,
-                alert_deg text,
+                alert_id int,
+                type_id int,
+                event_id int,
+                user_id int,
+                province text,
+                municipality text,
                 alert_number int,
                 full_date text,
                 year int,
@@ -89,7 +91,7 @@ session.execute("""
                 quarter text,
                 day_type text,
                 season text,
-                PRIMARY KEY (thing_id)
+                PRIMARY KEY (type_id,event_id, user_id)
 );
                 """
                 )

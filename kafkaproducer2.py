@@ -17,11 +17,10 @@ def produce_events(bootstrap_servers, topic):
         alert1 = {
             'type_id': 1,
             'user_id': 1,
-            'event_date': str(datetime.now()),
-            'latitude': random.uniform(1.0, 2.3),
-            'longitude': random.uniform(27.0, 29.0),
+            'event_date': str(datetime.now()),            
+            'longitude': random.uniform(19.06, 12.00),
+            'latitude': random.uniform(37.09, 15.00),
             'event_id': '1',
-            'type_id': 1,
             
         } 
 
@@ -29,15 +28,40 @@ def produce_events(bootstrap_servers, topic):
             'type_id': 2,
             'user_id': 2,
             'event_date': str(datetime.now()),
-            'latitude': random.uniform(1.0, 2.3),
-            'longitude': random.uniform(27.0, 29.0),
+            'longitude': random.uniform(19.06, 12.00),
+            'latitude': random.uniform(37.09, 15.00),
             'event_id': '2',
-            'type_id': 2,
             
         }
 
+        alert3 = {
+                'type_id': 2,
+                'user_id': 1,
+                'event_date': str(datetime.now()),
+                'longitude': random.uniform(19.06, 12.00),
+                'latitude': random.uniform(37.09, 15.00),
+                'event_id': '2',
+                
+            }
+        
+
+        alert3 = {
+                'type_id': 2,
+                'user_id': 1,
+                'event_date': str(datetime.now()),
+                'longitude': random.uniform(19.06, 12.00),
+                'latitude': random.uniform(37.09, 15.00),
+                'event_id': '2',
+                
+            }
+
+
+
+
         producer.send(topic, value=str(alert1).encode('utf-8'))
         producer.send(topic, value=str(alert2).encode('utf-8'))
+        producer.send(topic, value=str(alert3).encode('utf-8'))
+        
 
 
 
