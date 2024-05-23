@@ -2285,18 +2285,22 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                 .options(table="alert", keyspace="pfe") \
                 .load()
             
-            
+            # select alert with type 1
+            cassandra_df = cassandra_df.filter(cassandra_df['type_id'] == 1)
 
             if(thing_id):
                 cassandra_df = cassandra_df.filter(cassandra_df['thing_id'] == str(thing_id))
 
+            if(group_id):
+                cassandra_df = cassandra_df.filter(cassandra_df['group_id'] == str(group_id))            
+
             else:
-                cassandra_df = cassandra_df.groupBy("full_date").agg(F.sum("alerts_raised").alias("alerts_raised"))
+                cassandra_df = cassandra_df.groupBy("full_date").agg(F.sum("alert_number").alias("alert_number"))
 
 
 
             
-            cassandra_df = cassandra_df.select("full_date", 'alerts_raised')
+            cassandra_df = cassandra_df.select("full_date", 'alert_number')
 
 
             if thing_id:
@@ -2323,7 +2327,9 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                 AND v.thing_id = t.thing_id
                                 AND year = {years}
                                 AND month = {months}
-                        AND v.thing_id = {thing_id}
+                                AND v.thing_id = {thing_id}
+                                AND alert_degree_id = 1
+
                                         
                                     GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
                                     """
@@ -2332,8 +2338,7 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
             else:
                     
                     df_mysq1 = spark.read.format('jdbc').\
-                    option
-                    ('url', 'jdbc:postgresql://localhost:5432/geopfe').\
+                    option('url', 'jdbc:postgresql://localhost:5432/geopfe').\
                     option("driver", "org.postgresql.Driver").\
                     option('user', 'postgres').\
                     option('password', 'ryqn').\
@@ -2354,6 +2359,8 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                     AND v.thing_id = t.thing_id
                                     AND year = {years}
                                     AND month = {months}
+                                    AND alert_degree_id = 1
+
                                             
                                         GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
                                         """ 
@@ -2768,7 +2775,7 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
         # Extract the month number from the current date
         month_number = current_date.month
 
-        if (months ==  '333333'):
+        if (months ==  str(month_number)):
         
 
 
@@ -2777,21 +2784,25 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
             # Load the Cassandra table into a DataFrame
             cassandra_df = spark.read \
                 .format("org.apache.spark.sql.cassandra") \
-                .options(table="vehicle_performance", keyspace="pfe") \
+                .options(table="alert", keyspace="pfe") \
                 .load()
             
-            
+            # select alert with type 1
+            cassandra_df = cassandra_df.filter(cassandra_df['type_id'] == 2)
 
             if(thing_id):
                 cassandra_df = cassandra_df.filter(cassandra_df['thing_id'] == str(thing_id))
 
+            if(group_id):
+                cassandra_df = cassandra_df.filter(cassandra_df['group_id'] == str(group_id))            
+
             else:
-                cassandra_df = cassandra_df.groupBy("full_date").agg(F.sum("alerts_raised").alias("alerts_raised"))
+                cassandra_df = cassandra_df.groupBy("full_date").agg(F.sum("alert_number").alias("alert_number"))
 
 
 
             
-            cassandra_df = cassandra_df.select("full_date", 'alerts_raised')
+            cassandra_df = cassandra_df.select("full_date", 'alert_number')
 
 
             if thing_id:
@@ -2819,6 +2830,7 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                 AND year = {years}
                                 AND month = {months}
                         AND v.thing_id = {thing_id}
+                        AND alert_degree_id = 2
                                         
                                     GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
                                     """
@@ -2849,6 +2861,8 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                 AND year = {years}
                                 AND month = {months}
                         AND t.group_id = {group_id}
+                        AND alert_degree_id = 2
+
                                         
                                     GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
                                     """
@@ -2879,6 +2893,8 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                 AND year = {years}
                                 AND month = {months}
                         AND t.type_id = {type_id}
+                        AND alert_degree_id = 2
+
                                         
                                     GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
                                     """
@@ -2888,8 +2904,7 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
             else:
                     
                     df_mysq1 = spark.read.format('jdbc').\
-                    option
-                    ('url', 'jdbc:postgresql://localhost:5432/geopfe').\
+                    option('url', 'jdbc:postgresql://localhost:5432/geopfe').\
                     option("driver", "org.postgresql.Driver").\
                     option('user', 'postgres').\
                     option('password', 'ryqn').\
@@ -2910,6 +2925,7 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                     AND v.thing_id = t.thing_id
                                     AND year = {years}
                                     AND month = {months}
+                        AND alert_degree_id = 2
                                             
                                         GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
                                         """ 
@@ -3052,31 +3068,33 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
         # Extract the month number from the current date
         month_number = current_date.month
 
-        if (months ==  'ssssss'):
+        if (months ==  str(month_number)):
         
-
 
 
 
             # Load the Cassandra table into a DataFrame
             cassandra_df = spark.read \
                 .format("org.apache.spark.sql.cassandra") \
-                .options(table="vehicle_performance", keyspace="pfe") \
+                .options(table="alert", keyspace="pfe") \
                 .load()
             
-            
+            # select alert with type 1
+            cassandra_df = cassandra_df.filter(cassandra_df['type_id'] == 3)
 
             if(thing_id):
                 cassandra_df = cassandra_df.filter(cassandra_df['thing_id'] == str(thing_id))
 
+            if(group_id):
+                cassandra_df = cassandra_df.filter(cassandra_df['group_id'] == str(group_id))            
+
             else:
-                cassandra_df = cassandra_df.groupBy("full_date").agg(F.sum("alerts_raised").alias("alerts_raised"))
+                cassandra_df = cassandra_df.groupBy("full_date").agg(F.sum("alert_number").alias("alert_number"))
 
 
 
             
-            cassandra_df = cassandra_df.select("full_date", 'alerts_raised')
-
+            cassandra_df = cassandra_df.select("full_date", 'alert_number')
 
             if thing_id:
 
@@ -3103,6 +3121,7 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                 AND year = {years}
                                 AND month = {months}
                         AND v.thing_id = {thing_id}
+                        AND alert_degree_id = 3
                                         
                                     GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
                                     """
@@ -3133,6 +3152,8 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                 AND year = {years}
                                 AND month = {months}
                         AND t.group_id = {group_id}
+                        AND alert_degree_id = 3
+
                                         
                                     GROUP by   d.full_date, TO_CHAR(d.full_date, 'Day') 
                                     """
@@ -3163,6 +3184,8 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                 AND year = {years}
                                 AND month = {months}
                         AND t.type_id = {type_id}
+                        AND alert_degree_id = 3
+
                                         
                                     GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
                                     """
@@ -3173,8 +3196,7 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
             else:
                     
                     df_mysq1 = spark.read.format('jdbc').\
-                    option
-                    ('url', 'jdbc:postgresql://localhost:5432/geopfe').\
+                    option('url', 'jdbc:postgresql://localhost:5432/geopfe').\
                     option("driver", "org.postgresql.Driver").\
                     option('user', 'postgres').\
                     option('password', 'ryqn').\
@@ -3195,6 +3217,8 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                     AND v.thing_id = t.thing_id
                                     AND year = {years}
                                     AND month = {months}
+                        AND alert_degree_id = 3
+
                                             
                                         GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
                                         """ 

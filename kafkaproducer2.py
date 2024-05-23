@@ -54,6 +54,17 @@ def produce_events(bootstrap_servers, topic):
                 'event_id': '2',
                 
             }
+        
+
+        alert3 = {
+                'type_id': 3,
+                'user_id': 2,
+                'event_date': str(datetime.now()),
+                'longitude': random.uniform(19.06, 12.00),
+                'latitude': random.uniform(37.09, 15.00),
+                'event_id': '2',
+                
+            }
 
 
 

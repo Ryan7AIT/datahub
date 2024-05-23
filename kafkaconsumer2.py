@@ -252,29 +252,13 @@ if __name__ == "__main__":
     
     @udf(FloatType())
     def predict_rul(thing_id, oil_value, fuel_change, oil_rolling_mean, fuel_rolling_mean, oil_rolling_stddev, fuel_rolling_stddev, oil_cumsum, fuel_cumsum, oil_min, fuel_min, oil_max, fuel_max):
-
-        # Load the model and scaler
-        # model = joblib.load('/Users/mac/Desktop/random_forest_model.joblib')
-        # scaler = joblib.load('/Users/mac/Desktop/scaler.joblib')
-
-
-
-
-        
-
+ 
 
         features = np.array([[thing_id, oil_value, fuel_change, oil_rolling_mean, fuel_rolling_mean, oil_rolling_stddev, fuel_rolling_stddev, oil_cumsum, fuel_cumsum, oil_min, fuel_min, oil_max, fuel_max]])
-
-        
-        # Scale the features using the saved scaler
         features_scaled = scaler.transform(features)
-        
-        # Apply the model
-        # prediction = rfmodel.predict(features_scaled)
+        prediction = rfmodel.predict(features_scaled)
 
-
-        return 12345
-        # return float(prediction[0])
+        return float(prediction[0])
 
 
 
@@ -283,59 +267,11 @@ if __name__ == "__main__":
                                                           updated_df['fuel_rolling_stddev'], updated_df['oil_cumsum'], updated_df['fuel_cumsum'], updated_df['oil_min'], updated_df['fuel_min'], updated_df['oil_max'], updated_df['fuel_max']))
 
 
-# features = [ 'thing_id', 'oil_value', 'fuel_change', 'oil_rolling_mean', 'fuel_rolling_mean',
-#             'oil_rolling_stddev', 'fuel_rolling_stddev',
-#             'oil_cumsum', 'fuel_cumsum',
-#             'oil_min', 'fuel_min',
-#             'oil_max', 'fuel_max']
-
-
-
-
-
-
-
 
     updated_df = updated_df.drop("last_oil_change", "car_age","fuel_change","power_supply_voltage","engine_status","oil_value","fuel_liters","fuel_percent","oil_rolling_mean","fuel_rolling_mean","oil_rolling_stddev","fuel_rolling_stddev","oil_cumsum","fuel_cumsum","oil_min","fuel_min","oil_max","fuel_max")
 
 
-    # =======================================================
-    # =======================================================
-    # =======================================================
-    # =======================================================
-    # =======================================================
-    # =======================================================
-    # =======================================================
-    # =======================================================
-    # =======================================================
-    # =======================================================
-    # =======================================================
 
-
-
-
-
-
-
-
-
-
-
-    
-
-    # # Define a function that applies the model
-    # def predict_speeding(features):
-    #     prediction = model.predict([features])
-    #     return int(prediction[0])
-
-    # Convert the PySpark DataFrame to a Pandas DataFrame
-    # pandas_df = to_predict.toPandas()
-
-    # Apply the model to the Pandas DataFrame
-    # updated_df['is_speeding'] = pandas_df.apply(predict_speeding, axis=1)
-
-    # Convert the Pandas DataFrame back to a PySpark DataFrame
-    # updated_df = spark.createDataFrame(pandas_df)
 
     # Start the query to print the output to the console
     # query = updated_df \
@@ -356,7 +292,7 @@ if __name__ == "__main__":
           .save()
 
     
-    # # Write the streaming data to Cassandra
+    # Write the streaming data to Cassandra
     query = updated_df \
         .writeStream \
         .outputMode("append") \
