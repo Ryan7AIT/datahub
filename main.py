@@ -555,31 +555,27 @@ async def get_alerts(thing_id: Optional[int]=None, group_id: Optional[int]=None,
 
     select_query = f"""
             SELECT
-                f.alert_degree_id,
+                f.type_id,
                 COUNT(alert_count)
             FROM
                 alert_fact f,
-                alert_deg_dim d,
-                thing_dim t
+                alert_deg_dim d
             WHERE
-                f.alert_degree_id = d.alert_degree_id
+                f.type_id = d.alert_degree_id
 
-                AND f.thing_id = t.thing_id
 
      
     """
 
-    if thing_id :
-        select_query += f" AND t.thing_id = {thing_id} group by f.alert_degree_id"
 
-    elif group_id:
-        select_query += f" AND t.group_id = {group_id} group by f.alert_degree_id"
-    elif type_id:
-        select_query += f" AND t.type_id = {type_id} group by f.alert_degree_id"
+    # if group_id:
+    #     select_query += f" AND t.group_id = {group_id} group by f.type_id"
+    # elif type_id:
+    #     select_query += f" AND t.type_id = {type_id} group by f.type_id"
 
     
-    else:
-        select_query += " group by f.alert_degree_id"
+    # else:
+    select_query += " group by f.type_id"
 
 
 
@@ -763,6 +759,7 @@ ALLOW FILTERING
             "latitude": row.latitude,
             "longitude": row.longitude,
             "thing_id": row.thing_id,
+            "thing_name": row.thing_name,
             "active_time": row.active_time,
             "avg_speed": row.avg_speed,
             "max_speed": row.max_speed
@@ -2320,15 +2317,12 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                             COUNT(*) AS alerts_raised
                             FROM
                                 alert_fact v,
-                                thing_dim t,
                                 date_dim d
                             WHERE
                                 v.date_id = d.date_id
-                                AND v.thing_id = t.thing_id
                                 AND year = {years}
                                 AND month = {months}
-                                AND v.thing_id = {thing_id}
-                                AND alert_degree_id = 1
+                                    AND v.type_id = 1
 
                                         
                                     GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
@@ -2352,14 +2346,12 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                     COUNT(*) AS alerts_raised
                                 FROM
                                     alert_fact v,
-                                    thing_dim t,
                                     date_dim d
                                 WHERE
                                     v.date_id = d.date_id
-                                    AND v.thing_id = t.thing_id
                                     AND year = {years}
                                     AND month = {months}
-                                    AND alert_degree_id = 1
+                                    AND v.type_id = 1
 
                                             
                                         GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
@@ -2382,14 +2374,12 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                 d.day
             FROM
                 alert_fact v,
-                thing_dim t,
                 date_dim d
             WHERE
                 v.date_id = d.date_id
-                AND v.thing_id = t.thing_id
                 AND \"year\" = {years}
                 AND \"month\" = {months}
-                AND alert_degree_id = 1
+                AND v.type_id = 1
             GROUP BY
                 \"day\", full_date
             """
@@ -2408,25 +2398,23 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                 COUNT(*)
                 FROM
                 alert_fact v,
-                thing_dim t,
                 date_dim d
             WHERE
                 v.date_id = d.date_id
-                AND v.thing_id = t.thing_id
                 AND \"year\" = {years}
-                AND alert_degree_id = 1
+                AND v.type_id = 1
         """
 
-        if thing_id:
-            select_query += f" AND v.thing_id = {thing_id} group by \"month\", \"month_name\""
+        # if thing_id:
+        #     select_query += f" AND v.thing_id = {thing_id} group by \"month\", \"month_name\""
 
-        elif group_id:
-            select_query += f" AND t.group_id = {group_id} group by \"month\", \"month_name\""
+        # if group_id:
+        #     select_query += f" AND t.group_id = {group_id} group by \"month\", \"month_name\""
 
-        elif type_id:
-            select_query += f" AND t.type_id = {type_id} group by \"month\", \"month_name\""
-        else:
-            select_query += " group by \"month\", \"month_name\""
+        # elif type_id:
+        #     select_query += f" AND t.type_id = {type_id} group by \"month\", \"month_name\""
+        # else:
+        select_query += " group by \"month\", \"month_name\""
 
         cursor_postgres.execute(select_query)
         rows = cursor_postgres.fetchall()
@@ -2442,25 +2430,22 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                 COUNT(*)
                 FROM
                 alert_fact v,
-                thing_dim t,
                 date_dim d
             WHERE
                 v.date_id = d.date_id
-                AND v.thing_id = t.thing_id
-                AND alert_degree_id = 1
+                AND v.type_id = 1
 
         """
 
-        if thing_id :
-            select_query += f" AND v.thing_id = {thing_id} group by \"year\""
 
-        elif group_id:
-            select_query += f" AND t.group_id = {group_id} group by \"year\""
-        elif type_id:
-            select_query += f" AND t.type_id = {type_id} group by \"year\""
-            # return [11]
-        else:
-            select_query += " group by \"year\""
+
+        # if group_id:
+        #     select_query += f" AND t.group_id = {group_id} group by \"year\""
+        # elif type_id:
+        #     select_query += f" AND t.type_id = {type_id} group by \"year\""
+        #     # return [11]
+        # else:
+        select_query += " group by \"year\""
 
         cursor_postgres.execute(select_query)
         rows = cursor_postgres.fetchall()
@@ -2538,14 +2523,11 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                             COUNT(*) AS alerts_raised
                             FROM
                                 alert_fact v,
-                                thing_dim t,
                                 date_dim d
                             WHERE
                                 v.date_id = d.date_id
-                                AND v.thing_id = t.thing_id
                                 AND year = {years}
                                 AND month = {months}
-                        AND v.thing_id = {thing_id}
                                         
                                     GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
                                     """
@@ -2568,11 +2550,9 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                             COUNT(*) AS alerts_raised
                             FROM
                                 alert_fact v,
-                                thing_dim t,
                                 date_dim d
                             WHERE
                                 v.date_id = d.date_id
-                                AND v.thing_id = t.thing_id
                                 AND year = {years}
                                 AND month = {months}
                         AND t.group_id = {group_id}
@@ -2598,11 +2578,9 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                             COUNT(*) AS alerts_raised
                             FROM
                                 alert_fact v,
-                                thing_dim t,
                                 date_dim d
                             WHERE
                                 v.date_id = d.date_id
-                                AND v.thing_id = t.thing_id
                                 AND year = {years}
                                 AND month = {months}
                         AND t.type_id = {type_id}
@@ -2629,11 +2607,9 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                     COUNT(*) AS alerts_raised
                                 FROM
                                     alert_fact v,
-                                    thing_dim t,
                                     date_dim d
                                 WHERE
                                     v.date_id = d.date_id
-                                    AND v.thing_id = t.thing_id
                                     AND year = {years}
                                     AND month = {months}
                                             
@@ -2657,23 +2633,23 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                 d.day
             FROM
                 alert_fact v,
-                thing_dim t,
                 date_dim d
             WHERE
                 v.date_id = d.date_id
                 AND v.thing_id = t.thing_id
                 AND \"year\" = {years}
                 AND \"month\" = {months}
-                AND alert_degree_id = 1
+                AND v.type_id = 1
 
             """
 
-            if thing_id:
-                select_query += f" AND v.thing_id = {thing_id} group by \"day\", full_date"
-            elif group_id:
-                select_query += f" AND t.group_id = {group_id} group by \"day\", full_date"
-            elif type_id:
-                select_query += f" AND t.type_id = {type_id} group by \"day\", full_date"
+            # if group_id:
+            #     select_query += f" AND t.group_id = {group_id} group by \"day\", full_date"
+            # elif type_id:
+            #     select_query += f" AND t.type_id = {type_id} group by \"day\", full_date"
+
+            select_query += f"group by \"day\", full_date"
+
 
         cursor_postgres.execute(select_query)
         rows = cursor_postgres.fetchall()
@@ -2689,25 +2665,21 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                 COUNT(*)
                 FROM
                 alert_fact v,
-                thing_dim t,
                 date_dim d
             WHERE
                 v.date_id = d.date_id
-                AND v.thing_id = t.thing_id
                 AND \"year\" = {years}
-                AND alert_degree_id = 1
+                AND v.type_id = 1
         """
 
-        if thing_id:
-            select_query += f" AND v.thing_id = {thing_id} group by \"month\", \"month_name\""
 
-        elif group_id:
-            select_query += f" AND t.group_id = {group_id} group by \"month\", \"month_name\""
+        # if group_id:
+        #     select_query += f" AND t.group_id = {group_id} group by \"month\", \"month_name\""
 
-        elif type_id:
-            select_query += f" AND t.type_id = {type_id} group by \"month\", \"month_name\""
-        else:
-            select_query += " group by \"month\", \"month_name\""
+        # elif type_id:
+        #     select_query += f" AND t.type_id = {type_id} group by \"month\", \"month_name\""
+        # else:
+        select_query += " group by \"month\", \"month_name\""
 
         cursor_postgres.execute(select_query)
         rows = cursor_postgres.fetchall()
@@ -2723,24 +2695,20 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                 COUNT(*)
                 FROM
                 alert_fact v,
-                thing_dim t,
                 date_dim d
             WHERE
                 v.date_id = d.date_id
-                AND v.thing_id = t.thing_id
-                AND alert_degree_id = 1
+                AND v.type_id = 1
 
         """
 
-        if thing_id :
-            select_query += f" AND v.thing_id = {thing_id} group by \"year\""
 
-        elif group_id:
-            select_query += f" AND t.group_id = {group_id} group by \"year\""
-        elif type_id:
-            select_query += f" AND t.type_id = {type_id} group by \"year\""
-        else:
-            select_query += " group by \"year\""
+        # if group_id:
+        #     select_query += f" AND t.group_id = {group_id} group by \"year\""
+        # elif type_id:
+        #     select_query += f" AND t.type_id = {type_id} group by \"year\""
+        # else:
+        select_query += " group by \"year\""
 
         cursor_postgres.execute(select_query)
         rows = cursor_postgres.fetchall()
@@ -2822,15 +2790,12 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                             COUNT(*) AS alerts_raised
                             FROM
                                 alert_fact v,
-                                thing_dim t,
                                 date_dim d
                             WHERE
                                 v.date_id = d.date_id
-                                AND v.thing_id = t.thing_id
                                 AND year = {years}
                                 AND month = {months}
-                        AND v.thing_id = {thing_id}
-                        AND alert_degree_id = 2
+                                    AND v.type_id = 2
                                         
                                     GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
                                     """
@@ -2853,15 +2818,13 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                             COUNT(*) AS alerts_raised
                             FROM
                                 alert_fact v,
-                                thing_dim t,
                                 date_dim d
                             WHERE
                                 v.date_id = d.date_id
-                                AND v.thing_id = t.thing_id
                                 AND year = {years}
                                 AND month = {months}
                         AND t.group_id = {group_id}
-                        AND alert_degree_id = 2
+                                    AND v.type_id = 2
 
                                         
                                     GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
@@ -2885,15 +2848,13 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                             COUNT(*) AS alerts_raised
                             FROM
                                 alert_fact v,
-                                thing_dim t,
                                 date_dim d
                             WHERE
                                 v.date_id = d.date_id
-                                AND v.thing_id = t.thing_id
                                 AND year = {years}
                                 AND month = {months}
                         AND t.type_id = {type_id}
-                        AND alert_degree_id = 2
+                                    AND v.type_id = 2
 
                                         
                                     GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
@@ -2918,14 +2879,12 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                     COUNT(*) AS alerts_raised
                                 FROM
                                     alert_fact v,
-                                    thing_dim t,
                                     date_dim d
                                 WHERE
                                     v.date_id = d.date_id
-                                    AND v.thing_id = t.thing_id
                                     AND year = {years}
                                     AND month = {months}
-                        AND alert_degree_id = 2
+                                    AND v.type_id = 2
                                             
                                         GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
                                         """ 
@@ -2947,25 +2906,21 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                 d.day
             FROM
                 alert_fact v,
-                thing_dim t,
                 date_dim d
             WHERE
                 v.date_id = d.date_id
-                AND v.thing_id = t.thing_id
                 AND \"year\" = {years}
                 AND \"month\" = {months}
-                AND alert_degree_id = 2
+                                    AND v.type_id = 2
  
             """
 
-            if thing_id:
-                select_query += f" AND v.thing_id = {thing_id} group by \"day\", full_date"
-            elif group_id:
-                select_query += f" AND t.group_id = {group_id} group by \"day\", full_date"
-            elif type_id:
-                select_query += f" AND t.type_id = {type_id} group by \"day\", full_date"
-            else:
-                select_query += " group by \"day\", full_date"
+            # if group_id:
+            #     select_query += f" AND t.group_id = {group_id} group by \"day\", full_date"
+            # elif type_id:
+            #     select_query += f" AND t.type_id = {type_id} group by \"day\", full_date"
+            # else:
+            select_query += " group by \"day\", full_date"
 
         cursor_postgres.execute(select_query)
         rows = cursor_postgres.fetchall()
@@ -2981,25 +2936,21 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                 COUNT(*)
                 FROM
                 alert_fact v,
-                thing_dim t,
                 date_dim d
             WHERE
                 v.date_id = d.date_id
-                AND v.thing_id = t.thing_id
                 AND \"year\" = {years}
-                AND alert_degree_id = 2
+                                    AND v.type_id = 2
         """
 
-        if thing_id:
-            select_query += f" AND v.thing_id = {thing_id} group by \"month\", \"month_name\""
 
-        elif group_id:
-            select_query += f" AND t.group_id = {group_id} group by \"month\", \"month_name\""
+        # if group_id:
+        #     select_query += f" AND t.group_id = {group_id} group by \"month\", \"month_name\""
 
-        elif type_id:
-            select_query += f" AND t.type_id = {type_id} group by \"month\", \"month_name\""
-        else:
-            select_query += " group by \"month\", \"month_name\""
+        # elif type_id:
+        #     select_query += f" AND t.type_id = {type_id} group by \"month\", \"month_name\""
+        # else:
+        select_query += " group by \"month\", \"month_name\""
 
         cursor_postgres.execute(select_query)
         rows = cursor_postgres.fetchall()
@@ -3015,24 +2966,20 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                 COUNT(*)
                 FROM
                 alert_fact v,
-                thing_dim t,
                 date_dim d
             WHERE
                 v.date_id = d.date_id
-                AND v.thing_id = t.thing_id
-                AND alert_degree_id = 2
+                                    AND v.type_id = 2
 
         """
 
-        if thing_id :
-            select_query += f" AND v.thing_id = {thing_id} group by \"year\""
 
-        elif group_id:
-            select_query += f" AND t.group_id = {group_id} group by \"year\""
-        elif type_id:
-            select_query += f" AND t.type_id = {type_id} group by \"year\""
-        else:
-            select_query += " group by \"year\""
+        # if group_id:
+        #     select_query += f" AND t.group_id = {group_id} group by \"year\""
+        # elif type_id:
+        #     select_query += f" AND t.type_id = {type_id} group by \"year\""
+        # else:
+        select_query += " group by \"year\""
 
         cursor_postgres.execute(select_query)
         rows = cursor_postgres.fetchall()
@@ -3113,15 +3060,12 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                             COUNT(*) AS alerts_raised
                             FROM
                                 alert_fact v,
-                                thing_dim t,
                                 date_dim d
                             WHERE
                                 v.date_id = d.date_id
-                                AND v.thing_id = t.thing_id
                                 AND year = {years}
                                 AND month = {months}
-                        AND v.thing_id = {thing_id}
-                        AND alert_degree_id = 3
+                                    AND v.type_id = 3
                                         
                                     GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
                                     """
@@ -3144,15 +3088,13 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                             COUNT(*) AS alerts_raised
                             FROM
                                 alert_fact v,
-                                thing_dim t,
                                 date_dim d
                             WHERE
                                 v.date_id = d.date_id
-                                AND v.thing_id = t.thing_id
                                 AND year = {years}
                                 AND month = {months}
                         AND t.group_id = {group_id}
-                        AND alert_degree_id = 3
+                                    AND v.type_id = 3
 
                                         
                                     GROUP by   d.full_date, TO_CHAR(d.full_date, 'Day') 
@@ -3176,15 +3118,13 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                             COUNT(*) AS alerts_raised
                             FROM
                                 alert_fact v,
-                                thing_dim t,
                                 date_dim d
                             WHERE
                                 v.date_id = d.date_id
-                                AND v.thing_id = t.thing_id
                                 AND year = {years}
                                 AND month = {months}
                         AND t.type_id = {type_id}
-                        AND alert_degree_id = 3
+                                    AND v.type_id = 3
 
                                         
                                     GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
@@ -3210,14 +3150,12 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                     COUNT(*) AS alerts_raised
                                 FROM
                                     alert_fact v,
-                                    thing_dim t,
                                     date_dim d
                                 WHERE
                                     v.date_id = d.date_id
-                                    AND v.thing_id = t.thing_id
                                     AND year = {years}
                                     AND month = {months}
-                        AND alert_degree_id = 3
+                                    AND v.type_id = 3
 
                                             
                                         GROUP by             d.full_date, TO_CHAR(d.full_date, 'Day') 
@@ -3240,25 +3178,21 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                 d.day
             FROM
                 alert_fact v,
-                thing_dim t,
                 date_dim d
             WHERE
                 v.date_id = d.date_id
-                AND v.thing_id = t.thing_id
                 AND \"year\" = {years}
                 AND \"month\" = {months}
-                AND alert_degree_id = 3
+                                    AND v.type_id = 3
             """
 
-            if thing_id:
-                select_query += f" AND v.thing_id = {thing_id} group by \"day\", full_date"
-            elif group_id:
-                select_query += f" AND t.group_id = {group_id} group by \"day\", full_date"
-            elif type_id:
-                 select_query += f" AND t.type_id = {type_id} group by \"day\", full_date"
+            # if group_id:
+            #     select_query += f" AND t.group_id = {group_id} group by \"day\", full_date"
+            # elif type_id:
+            #      select_query += f" AND t.type_id = {type_id} group by \"day\", full_date"
 
-            else:
-                select_query += " group by \"day\", full_date"
+            # else:
+            select_query += " group by \"day\", full_date"
                  
 
         cursor_postgres.execute(select_query)
@@ -3275,25 +3209,21 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                 COUNT(*)
                 FROM
                 alert_fact v,
-                thing_dim t,
                 date_dim d
             WHERE
                 v.date_id = d.date_id
-                AND v.thing_id = t.thing_id
                 AND \"year\" = {years}
-                AND alert_degree_id = 3
+                                    AND v.type_id = 3
         """
 
-        if thing_id:
-            select_query += f" AND v.thing_id = {thing_id} group by \"month\", \"month_name\""
 
-        elif group_id:
-            select_query += f" AND t.group_id = {group_id} group by \"month\", \"month_name\""
+        # if group_id:
+        #     select_query += f" AND t.group_id = {group_id} group by \"month\", \"month_name\""
 
-        elif type_id:
-            select_query += f" AND t.type_id = {type_id} group by \"month\", \"month_name\""
-        else:
-            select_query += " group by \"month\", \"month_name\""
+        # elif type_id:
+        #     select_query += f" AND t.type_id = {type_id} group by \"month\", \"month_name\""
+        # else:
+        select_query += " group by \"month\", \"month_name\""
 
         cursor_postgres.execute(select_query)
         rows = cursor_postgres.fetchall()
@@ -3309,24 +3239,20 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                 COUNT(*)
                 FROM
                 alert_fact v,
-                thing_dim t,
                 date_dim d
             WHERE
                 v.date_id = d.date_id
-                AND v.thing_id = t.thing_id
-                AND alert_degree_id = 3
+                                    AND v.type_id = 3
 
         """
 
-        if thing_id :
-            select_query += f" AND v.thing_id = {thing_id} group by \"year\""
 
-        elif group_id:
-            select_query += f" AND t.group_id = {group_id} group by \"year\""
-        elif type_id:
-            select_query += f" AND t.type_id = {type_id} group by \"year\""
-        else:
-            select_query += " group by \"year\""
+        # if group_id:
+        #     select_query += f" AND t.group_id = {group_id} group by \"year\""
+        # elif type_id:
+        #     select_query += f" AND t.type_id = {type_id} group by \"year\""
+        # else:
+        select_query += " group by \"year\""
 
         cursor_postgres.execute(select_query)
         rows = cursor_postgres.fetchall()
@@ -3533,22 +3459,92 @@ async def get_active_count(group_id: Optional[int]=None,type_id: Optional[int]=N
     """
     """
 
-    select_query = f"""
-            SELECT
-                COUNT(t.thing_id)
-            FROM
-                thing_dim t,
-                vehicle_peroformance v
-            WHERE
-                t.thing_id = v.thing_id
-        """
+
+    cluster = Cluster(['localhost'])
+    session = cluster.connect('pfe')  # Replace 'pfe' with your keyspace
+
+    # Query to count the number of unique thing_id
+    query = "SELECT COUNT(thing_id) FROM vehicle_performance"
+    result = session.execute(query)
+
+    # Fetch the result
+    unique_thing_id_count = result.one()[0]
+
+
+    # Close connection
+    session.shutdown()
+
+    result = []
+    result.append({
+        "active_count": unique_thing_id_count
+    })
+
+
+    return result
+
+    
+    cassandra_df = cassandra_df.select("full_date", 'alert_number')
+        
+        
+    # return result
+    
+@app.get('/fuelconsumption')
+async def get_fuel_consumption(thing_id: Optional[int]=None, group_id: Optional[int]=None,type_id: Optional[int]=None ,years: Optional[str] = None, months: Optional[str] = None, d1: Optional[str] = None, d2: Optional[str] = None) -> Union[list, None]:
+    """
+    """
+
+    cluster = Cluster(['localhost'])
+    session = cluster.connect('pfe')  # Replace 'pfe' with your keyspace
+
+    # Query to count the number of unique thing_id
+    query = "SELECT SUM(fuel) FROM vehicle_performance"
+
+    if thing_id :
+        select_query += f""" WHERE thing_id = {thing_id} """
+
+    elif group_id:
+        select_query += f""" WHERE group_id = {group_id} """
+    elif type_id:
+        select_query += f""" WHERE type_id = {type_id} """
+
+
+    result = session.execute(query)
+
+    # Fetch the result
+    unique_thing_id_count = result.one()[0]
+
+
+    # Close connection
+    session.shutdown()
+
+    result = []
+    result.append({
+        "fuel_consumption": unique_thing_id_count
+    })
+
+
+    return result
+
+
     
 
-    if group_id:
-        select_query += f""" AND t.group_id = {group_id} """
+@app.get('/maintenanceC')
+async def get_maintenance_cost(thing_id: Optional[int]=None, group_id: Optional[int]=None,type_id: Optional[int]=None ,years: Optional[str] = None, months: Optional[str] = None, d1: Optional[str] = None, d2: Optional[str] = None) -> Union[list, None]:
 
-    elif type_id:
-        select_query += f""" AND t.type_id = {type_id} """
+    select_query = f"""
+            SELECT
+                name,
+                maintenance,
+                maintenance_date,
+                thing_id
+            FROM
+                cars_needing_maintenance
+            WHERE
+                maintenance <> 'done'
+            
+                    
+"""
+
 
     cursor_postgres.execute(select_query)
     rows = cursor_postgres.fetchall()
@@ -3558,10 +3554,32 @@ async def get_active_count(group_id: Optional[int]=None,type_id: Optional[int]=N
     result = []
     for row in rows:
         result.append({
-            "active_count": 321
+            "journey_count": row[0]
         })
-    return result
-    
+    return rows
+
+
+# update a car maintenance need 
+@app.put('/delete_car')
+async def update_maintenance_cost(thing_id: int) -> Union[dict, None]:
+    """
+    """
+    update_query = f"""
+        UPDATE cars_needing_maintenance
+        SET maintenance = 'done'
+        WHERE thing_id = {thing_id}
+    """
+
+    cursor_postgres.execute(update_query)
+
+
+    conn.commit()
+
+    return {
+        "message": "Car maintenance updated successfully"
+    }
+
+
 
 
 

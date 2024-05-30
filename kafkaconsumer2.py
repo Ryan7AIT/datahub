@@ -13,6 +13,9 @@ from keras.models import load_model
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 import pandas as pd
 
+import os
+os.environ['PYSPARK_PYTHON'] = '/usr/bin/python3'
+os.environ['PYSPARK_DRIVER_PYTHON'] = '/usr/bin/python3'
 if __name__ == "__main__":
     spark = SparkSession.builder.appName("KafkaConsumer")\
         .config('spark.jars.packages', 'org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.0,com.datastax.spark:spark-cassandra-connector_2.12:3.1.0')\
@@ -31,6 +34,7 @@ if __name__ == "__main__":
         .load()
     
 
+
  
 
     # Define your schema (replace with your actual schema)
@@ -44,14 +48,15 @@ if __name__ == "__main__":
         .add("engine_status", StringType())\
         .add("oil_value", IntegerType())\
         .add("fuel_liters", IntegerType())\
-        .add("fuel_percent", IntegerType())
+        .add("fuel_percent", IntegerType())\
+        .add("thing_name", StringType())
 
     # Deserialize the JSON data
     df = df.select(from_json(col("value").cast("string"), schema).alias("data"))
 
 
     # make the df in atbale format
-    df = df.selectExpr("data.trace_id", "data.thing_id", "data.trace_date", "data.speed", "data.engine_status","data.latitude","data.longitude","data.oil_value","data.fuel_liters","data.fuel_percent")
+    df = df.selectExpr("data.thing_name","data.trace_id", "data.thing_id", "data.trace_date", "data.speed", "data.engine_status","data.latitude","data.longitude","data.oil_value","data.fuel_liters","data.fuel_percent")
     
 
     
@@ -145,7 +150,7 @@ if __name__ == "__main__":
 
 
 
-    updated_df = updated_df.select("last_oil_change", "fuel", "car_age","fuel_change","power_supply_voltage","new.thing_id",  "avg_speed", "max_speed", "idle_time", "active_time", "full_date","new.longitude","new.latitude","new.trace_date","traveled_distance","oil_value","engine_status","fuel_liters","fuel_percent","oil_rolling_mean","fuel_rolling_mean","oil_rolling_stddev","fuel_rolling_stddev","oil_cumsum","fuel_cumsum","oil_min","fuel_min","oil_max","fuel_max")
+    updated_df = updated_df.select("new.thing_name","last_oil_change", "fuel", "car_age","fuel_change","power_supply_voltage","new.thing_id",  "avg_speed", "max_speed", "idle_time", "active_time", "full_date","new.longitude","new.latitude","new.trace_date","traveled_distance","oil_value","engine_status","fuel_liters","fuel_percent","oil_rolling_mean","fuel_rolling_mean","oil_rolling_stddev","fuel_rolling_stddev","oil_cumsum","fuel_cumsum","oil_min","fuel_min","oil_max","fuel_max")
 
 
 
@@ -194,11 +199,13 @@ if __name__ == "__main__":
         features_array = features_scaled.reshape((1, 1, features_scaled.shape[1]))
         
         # Apply the model
-        prediction = model.predict(features_array)
+        # prediction = model.predict(features_array)
 
  
 
-        predicted_class = np.argmax(prediction)
+        # predicted_class = np.argmax(prediction)
+
+        predicted_class = 432
 
         return int(predicted_class)
     
@@ -247,19 +254,19 @@ if __name__ == "__main__":
 
 
 
-    rfmodel = joblib.load('/Users/mac/Desktop/rulligh/random_forest_model.joblib')
-    scaler = joblib.load('/Users/mac/Desktop/rulligh/scaler.joblib')
+    # scaler = joblib.load('/Users/mac/Desktop/rulligh/scaler.joblib')
     
     @udf(FloatType())
     def predict_rul(thing_id, oil_value, fuel_change, oil_rolling_mean, fuel_rolling_mean, oil_rolling_stddev, fuel_rolling_stddev, oil_cumsum, fuel_cumsum, oil_min, fuel_min, oil_max, fuel_max):
  
+        rfmodel = joblib.load('/Users/mac/Desktop/rulligh/random_forest_model.joblib')
 
         features = np.array([[thing_id, oil_value, fuel_change, oil_rolling_mean, fuel_rolling_mean, oil_rolling_stddev, fuel_rolling_stddev, oil_cumsum, fuel_cumsum, oil_min, fuel_min, oil_max, fuel_max]])
-        features_scaled = scaler.transform(features)
-        prediction = rfmodel.predict(features_scaled)
+        # features_scaled = scaler.transform(features)
+        prediction = rfmodel.predict(features)
 
-        return float(prediction[0])
-
+        # return float(prediction[0])
+        return 223.9
 
 
     # Apply the model to the incoming DataFrame
@@ -297,7 +304,7 @@ if __name__ == "__main__":
         .writeStream \
         .outputMode("append") \
         .foreachBatch(write_to_cassandra) \
-        .trigger(processingTime='2 seconds') \
+        .trigger(processingTime='10 seconds') \
         .start()
 
     query.awaitTermination()
