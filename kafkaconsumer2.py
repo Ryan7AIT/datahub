@@ -12,10 +12,14 @@ from pyspark.sql.functions import lit
 from keras.models import load_model
 from pyspark.sql.functions import pandas_udf, PandasUDFType
 import pandas as pd
+from pyspark.sql import Window
+from pyspark.sql.functions import mean, stddev, sum, min, max, col, row_number
 
 import os
 os.environ['PYSPARK_PYTHON'] = '/usr/bin/python3'
 os.environ['PYSPARK_DRIVER_PYTHON'] = '/usr/bin/python3'
+
+
 if __name__ == "__main__":
     spark = SparkSession.builder.appName("KafkaConsumer")\
         .config('spark.jars.packages', 'org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.0,com.datastax.spark:spark-cassandra-connector_2.12:3.1.0')\
@@ -109,6 +113,9 @@ if __name__ == "__main__":
     )
 )
 
+
+    # updated_df = updated_df.withColumn('traveled_distance', lit(0.0))
+
     # select the columns to be saved in cassandra
     current_date = datetime.now()
 
@@ -134,16 +141,63 @@ if __name__ == "__main__":
     updated_df = updated_df.withColumn("power_supply_voltage", lit(10))
 
 
-    updated_df = updated_df.withColumn("oil_rolling_mean", lit(1.2))
-    updated_df = updated_df.withColumn("fuel_rolling_mean", lit(0.3))
-    updated_df = updated_df.withColumn("oil_rolling_stddev", lit(0.14))
-    updated_df = updated_df.withColumn("fuel_rolling_stddev", lit(0.0016))
-    updated_df = updated_df.withColumn("oil_cumsum", lit(0.9))
-    updated_df = updated_df.withColumn("fuel_cumsum", lit(0.7))
-    updated_df = updated_df.withColumn("oil_min", lit(0.8))
-    updated_df = updated_df.withColumn("fuel_min", lit(1.2))
-    updated_df = updated_df.withColumn("oil_max", lit(1.1))
-    updated_df = updated_df.withColumn("fuel_max", lit(1.3))
+# drive features for comming data:
+
+    # # Read the existing data from Cassandra
+    trace = spark.read \
+        .format("org.apache.spark.sql.cassandra") \
+        .options(table="trace", keyspace="pfe") \
+        .load()
+    
+
+    # Define a window partitioned by 'thing_id' and ordered by 'trace_date' with a window frame of 10 previous rows
+    window_spec = Window.partitionBy("thing_id").orderBy("trace_date").rowsBetween(-9, 0)
+
+    # Compute the rolling statistics with a fixed-length window of the last 3 observations
+    trace_df = trace.withColumn("oil_rolling_mean", mean("oil_value").over(window_spec)) \
+               .withColumn("fuel_rolling_mean", mean("fuel_liters").over(window_spec)) \
+               .withColumn("oil_rolling_stddev", stddev("oil_value").over(window_spec)) \
+               .withColumn("fuel_rolling_stddev", stddev("fuel_liters").over(window_spec)) \
+               .withColumn("oil_cumsum", sum("oil_value").over(window_spec)) \
+               .withColumn("fuel_cumsum", sum("fuel_liters").over(window_spec)) \
+               .withColumn("oil_min", min("oil_value").over(window_spec)) \
+               .withColumn("fuel_min", min("fuel_liters").over(window_spec)) \
+               .withColumn("oil_max", max("oil_value").over(window_spec)) \
+               .withColumn("fuel_max", max("fuel_liters").over(window_spec))
+    
+
+    trace_df = trace_df.select("trace_date","thing_id", "oil_rolling_mean", "fuel_rolling_mean", "oil_rolling_stddev", "fuel_rolling_stddev", "oil_cumsum", "fuel_cumsum", "oil_min", "fuel_min", "oil_max", "fuel_max")
+
+
+    # Add a row number to identify the most recent entry for each thing_id
+    window_spec_recent = Window.partitionBy("thing_id").orderBy(col("trace_date").desc())
+    trace_df = trace_df.withColumn("row_number", row_number().over(window_spec_recent))
+
+    # Filter to keep only the most recent entry for each thing_id
+    trace_df = trace_df.filter(col("row_number") == 1).drop("row_number")
+
+    # trace_df.show()
+
+    updated_df = updated_df.join(trace_df, on="thing_id", how="left")
+
+
+
+
+
+    # updated_df = updated_df.withColumn("oil_rolling_mean", lit(1.2))
+    # updated_df = updated_df.withColumn("fuel_rolling_mean", lit(0.3))
+    # updated_df = updated_df.withColumn("oil_rolling_stddev", lit(0.14))
+    # updated_df = updated_df.withColumn("fuel_rolling_stddev", lit(0.0016))
+    # updated_df = updated_df.withColumn("oil_cumsum", lit(0.9))
+    # updated_df = updated_df.withColumn("fuel_cumsum", lit(0.7))
+    # updated_df = updated_df.withColumn("oil_min", lit(0.8))
+    # updated_df = updated_df.withColumn("fuel_min", lit(1.2))
+    # updated_df = updated_df.withColumn("oil_max", lit(1.1))
+    # updated_df = updated_df.withColumn("fuel_max", lit(1.3))
+
+
+
+
 
 
 
@@ -168,49 +222,49 @@ if __name__ == "__main__":
     import joblib
 
 
-    # Define a user-defined function that applies the model
-    @udf(IntegerType())
-    def predict_speeding(speed):
-        model = load_model('pm_model.h5')
+    # # Define a user-defined function that applies the model
+    # @udf(IntegerType())
+    # def predict_speeding(speed):
+    #     model = load_model('pm_model.h5')
 
-        # prediction = model.predict(np.array([[speed]]))
-        return 1
-        return int(prediction[0])
-    # model = load_model('pm_model.h5')
-    # 
+    #     # prediction = model.predict(np.array([[speed]]))
+    #     return 1
+    #     return int(prediction[0])
+    # # model = load_model('pm_model.h5')
+    # # 
 
-        # Define a user-defined function that applies the model
-    @udf(IntegerType())
-    def mlp(engine_status, power_supply_voltage, oil_value, fuel_liters, fuel_change, car_age, last_oil_change):
-        model = load_model('/Users/mac/Desktop/pm_model.h5')
-        scaler = joblib.load('/Users/mac/Desktop/my_scaler.pkl')
+    #     # Define a user-defined function that applies the model
+    # @udf(IntegerType())
+    # def mlp(engine_status, power_supply_voltage, oil_value, fuel_liters, fuel_change, car_age, last_oil_change):
+    #     model = load_model('/Users/mac/Desktop/pm_model.h5')
+    #     scaler = joblib.load('/Users/mac/Desktop/my_scaler.pkl')
 
 
-        # prediction = model.predict(np.array([[engine_status], [power_supply_voltage], [oil_value], [fuel_liters], [fuel_change], [car_age], [last_oil_change]]))
-        # return int(prediction[0])
+    #     # prediction = model.predict(np.array([[engine_status], [power_supply_voltage], [oil_value], [fuel_liters], [fuel_change], [car_age], [last_oil_change]]))
+    #     # return int(prediction[0])
 
-            # Convert the inputs to a 2D array
-        features = np.array([[engine_status, power_supply_voltage, oil_value, fuel_liters, fuel_change, car_age, last_oil_change]])
+    #         # Convert the inputs to a 2D array
+    #     features = np.array([[engine_status, power_supply_voltage, oil_value, fuel_liters, fuel_change, car_age, last_oil_change]])
         
-        # Scale the features using the saved scaler
-        features_scaled = scaler.transform(features)
+    #     # Scale the features using the saved scaler
+    #     features_scaled = scaler.transform(features)
         
-        # Reshape to 3D array (samples, timesteps, features)
-        features_array = features_scaled.reshape((1, 1, features_scaled.shape[1]))
+    #     # Reshape to 3D array (samples, timesteps, features)
+    #     features_array = features_scaled.reshape((1, 1, features_scaled.shape[1]))
         
-        # Apply the model
-        # prediction = model.predict(features_array)
+    #     # Apply the model
+    #     # prediction = model.predict(features_array)
 
  
 
-        # predicted_class = np.argmax(prediction)
+    #     # predicted_class = np.argmax(prediction)
 
-        predicted_class = 432
+    #     predicted_class = 432
 
-        return int(predicted_class)
+    #     return int(predicted_class)
     
     # Apply the model to the incoming DataFrame
-    updated_df = updated_df.withColumn('maintenance', mlp(updated_df['car_age'], updated_df['fuel_change'], updated_df['last_oil_change'], updated_df['power_supply_voltage'], updated_df['oil_value'], updated_df['fuel_liters'], updated_df['engine_status']))
+    # updated_df = updated_df.withColumn('maintenance', mlp(updated_df['car_age'], updated_df['fuel_change'], updated_df['last_oil_change'], updated_df['power_supply_voltage'], updated_df['oil_value'], updated_df['fuel_liters'], updated_df['engine_status']))
 
 
     # updated_df = updated_df.withColumn('fuel', lit(0.14))
@@ -265,11 +319,10 @@ if __name__ == "__main__":
         # features_scaled = scaler.transform(features)
         prediction = rfmodel.predict(features)
 
-        # return float(prediction[0])
-        return 223.9
+        return float(prediction[0])
 
 
-    # Apply the model to the incoming DataFrame
+
     updated_df = updated_df.withColumn('rul', predict_rul(updated_df['thing_id'], updated_df['oil_value'], updated_df['fuel_change'], updated_df['oil_rolling_mean'], updated_df['fuel_rolling_mean'], updated_df['oil_rolling_stddev'], 
                                                           updated_df['fuel_rolling_stddev'], updated_df['oil_cumsum'], updated_df['fuel_cumsum'], updated_df['oil_min'], updated_df['fuel_min'], updated_df['oil_max'], updated_df['fuel_max']))
 
@@ -281,11 +334,11 @@ if __name__ == "__main__":
 
 
     # Start the query to print the output to the console
-    # query = updated_df \
-    #     .writeStream \
-    #     .outputMode("append") \
-    #     .format("console") \
-    #     .start()
+    query = updated_df \
+        .writeStream \
+        .outputMode("append") \
+        .format("console") \
+        .start()
 
     # query.awaitTermination()
 
