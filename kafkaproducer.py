@@ -4,7 +4,7 @@
 # from datetime import datetime
 # from time import sleep
 # from kafka import KafkaProducer
-# import random
+import random
 
 # def produce_events(bootstrap_servers, topic):
 #     producer = KafkaProducer(bootstrap_servers=bootstrap_servers)
@@ -136,9 +136,9 @@ def produce_events_from_multiple_csv(bootstrap_servers, topic, csv_file_paths):
                     'latitude': row['latitude'],
                     'speed': row['speed'],
                     'engine_status': row['engine_status'],
-                    'oil_value': 3,
-                    'fuel_liters': 12,
-                    'fuel_percent': 31,
+                    'oil_value': random.randint(2, 5),
+                    'fuel_liters': random.randint(10, 20),
+                    'fuel_percent': random.randint(10, 40),
                     'battery': row['battery_current']
                 }
 
@@ -163,7 +163,13 @@ if __name__ == '__main__':
         '/Users/mac/Downloads/car629.csv', 
         '/Users/mac/Downloads/car1599.csv', 
         '/Users/mac/Downloads/car338.csv', 
-        '/Users/mac/Downloads/car3152.csv'
+        '/Users/mac/Downloads/car3152.csv',
+        '/Users/mac/Downloads/car3038.csv',
+        '/Users/mac/Downloads/car4775.csv',
+        '/Users/mac/Downloads/car2239.csv',
+        '/Users/mac/Downloads/car4699.csv',
+
+
     ]  # Update these paths to your CSV file paths
 
     produce_events_from_multiple_csv(bootstrap_servers, topic, csv_file_paths)

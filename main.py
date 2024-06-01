@@ -1246,7 +1246,8 @@ async def get_distance(thing_id: Optional[int]=None, group_id: Optional[int]=Non
         else:
             select_query = f"""
             SELECT
-            TO_CHAR(d.full_date, 'Day'),
+            	TO_CHAR(d.full_date, 'Day') || d.full_date AS datee,
+
                 SUM(v.travled_distance)
                 "day"
             FROM
@@ -1261,13 +1262,13 @@ async def get_distance(thing_id: Optional[int]=None, group_id: Optional[int]=Non
         """
 
         if thing_id:
-            select_query += f" AND v.thing_id = {thing_id} group by \"day\", full_date"
+            select_query += f" AND v.thing_id = {thing_id} group by d.full_date, TO_CHAR(d.full_date, 'Day')"
         elif group_id:
-            select_query += f" AND t.group_id = {group_id} group by \"day\", full_date"
+            select_query += f" AND t.group_id = {group_id} group by d.full_date, TO_CHAR(d.full_date, 'Day')"
         elif type_id:
-            select_query += f" AND t.type_id = {type_id} group by \"day\", full_date"
+            select_query += f" AND t.type_id = {type_id} group by d.full_date, TO_CHAR(d.full_date, 'Day')"
         else:
-            select_query += " group by \"day\", full_date"
+            select_query += " group by d.full_date, TO_CHAR(d.full_date, 'Day')"
 
 
         cursor_postgres.execute(select_query)
@@ -3581,6 +3582,30 @@ async def update_maintenance_cost(thing_id: int) -> Union[dict, None]:
 
 
 
+# add a car to maintenance list
+@app.post('/add_car_to_maintenance')
+async def add_car_to_maintenance(thing_id: int) -> Union[dict, None]:
+    """
+    """
+
+    #  get the current date
+    current_date = datetime.datetime.now() 
+
+    insert_query = f"""
+        INSERT INTO cars_needing_maintenance (thing_id, name , maintenance, maintenance_date)
+        VALUES ({thing_id}, 'car{thing_id}' , 'Soon', '{current_date}')
+    """
+
+    cursor_postgres.execute(insert_query)
+
+    conn.commit()
+
+    return {
+        "message": "Car added to maintenance list successfully"
+    }
+
+
+
 
 
 # #######################################
@@ -3599,7 +3624,7 @@ async def update_maintenance_cost(thing_id: int) -> Union[dict, None]:
 
 # define a rout to get the historcal oil value
 @app.get('/historical/oil')
-async def get_historical_oil() -> Union[list, None]:
+async def get_historical_oil(thing_id: Optional[int]=None) -> Union[list, None]:
     """
     """
 
@@ -3614,10 +3639,11 @@ async def get_historical_oil() -> Union[list, None]:
     session.row_factory = dict_factory
 
 
-
     select_query = f"""
-                select * from trace where thing_id = '1599' ORDER BY trace_date DESC limit 100 ;      
-        """
+                select * from trace where thing_id = '{thing_id}' ORDER BY trace_date DESC limit 100 ;"""
+    # select_query = f"""
+    #             select * from trace where thing_id = '1599' ORDER BY trace_date DESC limit 100 ;      
+    #     """
     
 
    
@@ -3641,7 +3667,7 @@ async def get_historical_oil() -> Union[list, None]:
 
 # define a rout to get the historcal fuel values
 @app.get('/historical/fuel')
-async def get_historical_fuel() -> Union[list, None]:
+async def get_historical_fuel(thing_id:Optional[int]=None) -> Union[list, None]:
     """
     """
 
@@ -3658,7 +3684,7 @@ async def get_historical_fuel() -> Union[list, None]:
 
 
     select_query = f"""
-                select * from trace where thing_id = '1599' ORDER BY trace_date DESC limit 100 ;      
+                select * from trace where thing_id = '{thing_id}' ORDER BY trace_date DESC limit 100 ;      
         """
     
 
@@ -3681,7 +3707,7 @@ async def get_historical_fuel() -> Union[list, None]:
 
 # define a route to get the historical battery volatge
 @app.get('/historical/battery')
-async def get_historical_battery() -> Union[list, None]:
+async def get_historical_battery(thing_id:Optional[int]=None) -> Union[list, None]:
     """
     """
 
@@ -3698,7 +3724,7 @@ async def get_historical_battery() -> Union[list, None]:
 
 
     select_query = f"""
-                select * from trace where thing_id = '1599' ORDER BY trace_date DESC limit 100 ;      
+                select * from trace where thing_id = '{thing_id}' ORDER BY trace_date DESC limit 100 ;      
         """
     
 
@@ -3708,7 +3734,7 @@ async def get_historical_battery() -> Union[list, None]:
     rows = list(rows)
     
     # Create two lists: one for the distances and one for the dates
-    battery = [row['battery_voltage'] for row in rows]
+    battery = [row['battery'] for row in rows]
     date = [row['trace_date'] for row in rows]
 
     date = [datetime.datetime.strptime(row['trace_date'], '%Y-%m-%d %H:%M:%S.%f').strftime('%M:%S') for row in rows]    # Close connection
@@ -3749,8 +3775,8 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 # Fake database
 fake_users_db = {
         "username": "p",
-        "email": "p",
-        "password": "p",  
+        "email": "pfe@datafirst.com",
+        "password": "password",  
         "disabled": False,
 }
 
@@ -3761,12 +3787,14 @@ class LoginForm(BaseModel):
 @app.post("/login")
 async def login(username: str = Form(...), password: str = Form(...)):
     password2 = fake_users_db["password"] 
+    email2 = fake_users_db["email"]
     user = fake_users_db.get(username)
 
 
 
 
-    if  password2 != password:
+
+    if  password2 != password or email2 != username:
 
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

@@ -103,18 +103,18 @@ if __name__ == "__main__":
 
 
 
-    updated_df = updated_df.withColumn(
-    'traveled_distance', 
-    F.when(
-        F.col('old.traveled_distance').isNull() | F.col('old.latitude').isNull() | F.col('old.longitude').isNull() | F.col('new.latitude').isNull() | F.col('new.longitude').isNull(), 
-        0
-    ).otherwise(
-        F.col('old.traveled_distance') + haversine_udf(F.col('old.latitude'), F.col('old.longitude'), F.col('new.latitude'), F.col('new.longitude'))
-    )
-)
+#     updated_df = updated_df.withColumn(
+#     'traveled_distance', 
+#     F.when(
+#         F.col('old.traveled_distance').isNull() | F.col('old.latitude').isNull() | F.col('old.longitude').isNull() | F.col('new.latitude').isNull() | F.col('new.longitude').isNull(), 
+#         0
+#     ).otherwise(
+#         F.col('old.traveled_distance') + haversine_udf(F.col('old.latitude'), F.col('old.longitude'), F.col('new.latitude'), F.col('new.longitude'))
+#     )
+# )
 
 
-    # updated_df = updated_df.withColumn('traveled_distance', lit(0.0))
+    updated_df = updated_df.withColumn('traveled_distance', lit(0.0))
 
     # select the columns to be saved in cassandra
     current_date = datetime.now()

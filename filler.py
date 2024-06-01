@@ -49,16 +49,15 @@ cur = conn.cursor()
 
 
 # Step 1: Retrieve all rows to update the date_id column using ctid
-cur.execute("SELECT ctid FROM alert_fact")
-rows = cur.fetchall()
+# cur.execute("SELECT ctid FROM alert_fact")
+# rows = cur.fetchall()
 
-# Step 2: Update each row with a random date_id value between 1 and 8
-for row in rows:
-    ctid = row[0]
-    date_id = random.randint(1, 8)
-    cur.execute("UPDATE alert_fact SET date_id = %s WHERE ctid = %s", (date_id, ctid))
+# # Step 2: Update each row with a random date_id value between 1 and 8
+# for row in rows:
+#     ctid = row[0]
+#     date_id = random.randint(1, 8)
+#     cur.execute("UPDATE alert_fact SET date_id = %s WHERE ctid = %s", (date_id, ctid))
 
-# Commit the changes and close the connection
 
 
 

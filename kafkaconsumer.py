@@ -27,7 +27,8 @@ if __name__ == "__main__":
         .add("oil_value", IntegerType())\
         .add("fuel_liters", IntegerType())\
         .add("fuel_percent", IntegerType())\
-        .add("battery",IntegerType())
+        .add("battery",DoubleType())
+    
 
     # Deserialize the JSON data
     df = df.select(from_json(col("value").cast("string"), schema).alias("data"))
@@ -55,7 +56,7 @@ if __name__ == "__main__":
     # updated_df = updated_df.withColumn("avg_speed", col("old.avg_speed") + col("new.speed"))
 
     # Start the query to print the output to the console
-    # query = updated_df \
+    # query = df \
     #     .writeStream \
     #     .outputMode("append") \
     #     .format("console") \
