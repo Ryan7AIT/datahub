@@ -31,6 +31,7 @@ session.execute("""
     oil_value double,
     fuel_liters int,
     fuel_percent double,
+                km_after_last_maintance double,
                 battery double,
     PRIMARY KEY (thing_id, trace_date)
 ) WITH CLUSTERING ORDER BY (trace_date DESC);

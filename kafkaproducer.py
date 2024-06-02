@@ -136,7 +136,7 @@ def produce_events_from_multiple_csv(bootstrap_servers, topic, csv_file_paths):
                     'latitude': row['latitude'],
                     'speed': row['speed'],
                     'engine_status': row['engine_status'],
-                    'oil_value': random.randint(2, 5),
+                    'oil_value': random.randint(2, 3),
                     'fuel_liters': random.randint(10, 20),
                     'fuel_percent': random.randint(10, 40),
                     'battery': row['battery_current']

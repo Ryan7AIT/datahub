@@ -103,15 +103,28 @@ if __name__ == "__main__":
 
 
 
-#     updated_df = updated_df.withColumn(
-#     'traveled_distance', 
-#     F.when(
-#         F.col('old.traveled_distance').isNull() | F.col('old.latitude').isNull() | F.col('old.longitude').isNull() | F.col('new.latitude').isNull() | F.col('new.longitude').isNull(), 
-#         0
-#     ).otherwise(
-#         F.col('old.traveled_distance') + haversine_udf(F.col('old.latitude'), F.col('old.longitude'), F.col('new.latitude'), F.col('new.longitude'))
-#     )
-# )
+    updated_df = updated_df.withColumn(
+    'traveled_distance', 
+    F.when(
+        F.col('old.traveled_distance').isNull() | F.col('old.latitude').isNull() | F.col('old.longitude').isNull() | F.col('new.latitude').isNull() | F.col('new.longitude').isNull(), 
+        0
+    ).otherwise(
+        F.col('old.traveled_distance') + haversine_udf(F.col('old.latitude'), F.col('old.longitude'), F.col('new.latitude'), F.col('new.longitude'))
+    )
+)
+
+
+
+    updated_df = updated_df.withColumn(
+    'km_after_last_maintenance', 
+    F.when(
+        F.col('old.km_after_last_maintenance').isNull() | F.col('old.latitude').isNull() | F.col('old.longitude').isNull() | F.col('new.latitude').isNull() | F.col('new.longitude').isNull(), 
+        0
+    ).otherwise(
+        F.col('old.km_after_last_maintenance') + haversine_udf(F.col('old.latitude'), F.col('old.longitude'), F.col('new.latitude'), F.col('new.longitude'))
+    )
+)
+
 
 
     updated_df = updated_df.withColumn('traveled_distance', lit(0.0))
@@ -151,7 +164,7 @@ if __name__ == "__main__":
     
 
     # Define a window partitioned by 'thing_id' and ordered by 'trace_date' with a window frame of 10 previous rows
-    window_spec = Window.partitionBy("thing_id").orderBy("trace_date").rowsBetween(-9, 0)
+    window_spec = Window.partitionBy("thing_id").orderBy("trace_date").rowsBetween(-20, 0)
 
     # Compute the rolling statistics with a fixed-length window of the last 3 observations
     trace_df = trace.withColumn("oil_rolling_mean", mean("oil_value").over(window_spec)) \
@@ -164,6 +177,9 @@ if __name__ == "__main__":
                .withColumn("fuel_min", min("fuel_liters").over(window_spec)) \
                .withColumn("oil_max", max("oil_value").over(window_spec)) \
                .withColumn("fuel_max", max("fuel_liters").over(window_spec))
+    
+
+
     
 
     trace_df = trace_df.select("trace_date","thing_id", "oil_rolling_mean", "fuel_rolling_mean", "oil_rolling_stddev", "fuel_rolling_stddev", "oil_cumsum", "fuel_cumsum", "oil_min", "fuel_min", "oil_max", "fuel_max")
@@ -196,15 +212,19 @@ if __name__ == "__main__":
     # updated_df = updated_df.withColumn("fuel_max", lit(1.3))
 
 
+    updated_df = updated_df.withColumn("car_usage", lit(1))
 
 
 
 
 
+    
 
 
 
-    updated_df = updated_df.select("new.thing_name","last_oil_change", "fuel", "car_age","fuel_change","power_supply_voltage","new.thing_id",  "avg_speed", "max_speed", "idle_time", "active_time", "full_date","new.longitude","new.latitude","new.trace_date","traveled_distance","oil_value","engine_status","fuel_liters","fuel_percent","oil_rolling_mean","fuel_rolling_mean","oil_rolling_stddev","fuel_rolling_stddev","oil_cumsum","fuel_cumsum","oil_min","fuel_min","oil_max","fuel_max")
+
+
+    updated_df = updated_df.select("car_usage","km_after_last_maintenance","new.thing_name","last_oil_change", "fuel", "car_age","fuel_change","power_supply_voltage","new.thing_id",  "avg_speed", "max_speed", "idle_time", "active_time", "full_date","new.longitude","new.latitude","new.trace_date","traveled_distance","oil_value","engine_status","fuel_liters","fuel_percent","oil_rolling_mean","fuel_rolling_mean","oil_rolling_stddev","fuel_rolling_stddev","oil_cumsum","fuel_cumsum","oil_min","fuel_min","oil_max","fuel_max")
 
 
 
@@ -311,34 +331,37 @@ if __name__ == "__main__":
     # scaler = joblib.load('/Users/mac/Desktop/rulligh/scaler.joblib')
     
     @udf(FloatType())
-    def predict_rul(thing_id, oil_value, fuel_change, oil_rolling_mean, fuel_rolling_mean, oil_rolling_stddev, fuel_rolling_stddev, oil_cumsum, fuel_cumsum, oil_min, fuel_min, oil_max, fuel_max):
+    def predict_rul(km_after_last_maintenance, car_usage, thing_id, fuel_rolling_stddev, oil_cumsum, oil_max):
  
-        rfmodel = joblib.load('/Users/mac/Desktop/rulligh/random_forest_model.joblib')
+        # rfmodel = joblib.load('/Users/mac/Desktop/rulligh/random_forest_model.joblib')
+        # scaler = joblib.load('/Users/mac/Desktop/rulligh/scaler.joblib')
 
-        features = np.array([[thing_id, oil_value, fuel_change, oil_rolling_mean, fuel_rolling_mean, oil_rolling_stddev, fuel_rolling_stddev, oil_cumsum, fuel_cumsum, oil_min, fuel_min, oil_max, fuel_max]])
-        # features_scaled = scaler.transform(features)
-        prediction = rfmodel.predict(features)
+        rfmodel = joblib.load('/Users/mac/Desktop/rulapp/random_forest_model3.joblib')
+        scaler = joblib.load('/Users/mac/Desktop/rulapp/scaler3.joblib')
+
+        features = np.array([[km_after_last_maintenance, car_usage, thing_id, fuel_rolling_stddev, oil_cumsum, oil_max]])
+        features_scaled = scaler.transform(features)
+        prediction = rfmodel.predict(features_scaled)
 
         return float(prediction[0])
 
 
 
-    updated_df = updated_df.withColumn('rul', predict_rul(updated_df['thing_id'], updated_df['oil_value'], updated_df['fuel_change'], updated_df['oil_rolling_mean'], updated_df['fuel_rolling_mean'], updated_df['oil_rolling_stddev'], 
-                                                          updated_df['fuel_rolling_stddev'], updated_df['oil_cumsum'], updated_df['fuel_cumsum'], updated_df['oil_min'], updated_df['fuel_min'], updated_df['oil_max'], updated_df['fuel_max']))
+    updated_df = updated_df.withColumn('rul', predict_rul(updated_df['km_after_last_maintenance'], updated_df['car_usage'], updated_df['thing_id'], updated_df['fuel_rolling_stddev'], updated_df['oil_cumsum'], updated_df['oil_max']))
 
 
 
-    updated_df = updated_df.drop("last_oil_change", "car_age","fuel_change","power_supply_voltage","engine_status","oil_value","fuel_liters","fuel_percent","oil_rolling_mean","fuel_rolling_mean","oil_rolling_stddev","fuel_rolling_stddev","oil_cumsum","fuel_cumsum","oil_min","fuel_min","oil_max","fuel_max")
+    updated_df = updated_df.drop("car_usage","last_oil_change", "car_age","fuel_change","power_supply_voltage","engine_status","oil_value","fuel_liters","fuel_percent","oil_rolling_mean","fuel_rolling_mean","oil_rolling_stddev","fuel_rolling_stddev","oil_cumsum","fuel_cumsum","oil_min","fuel_min","oil_max","fuel_max")
 
 
 
 
     # Start the query to print the output to the console
-    query = updated_df \
-        .writeStream \
-        .outputMode("append") \
-        .format("console") \
-        .start()
+    # query = updated_df \
+    #     .writeStream \
+    #     .outputMode("append") \
+    #     .format("console") \
+    #     .start()
 
     # query.awaitTermination()
 

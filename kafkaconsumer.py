@@ -1,6 +1,10 @@
+from math import atan2, cos, radians, sin, sqrt
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col
 from pyspark.sql.types import StructType, StringType, DoubleType,IntegerType
+from pyspark.sql import functions as F
+from pyspark.sql.types import FloatType
+
 
 if __name__ == "__main__":
     spark = SparkSession.builder.appName("KafkaConsumer")\
@@ -40,6 +44,40 @@ if __name__ == "__main__":
     #rename a cloumn
     df = df.withColumnRenamed("latitude","lat")
     df = df.withColumnRenamed("longitude","long")
+
+
+
+
+#     # Define the haversine function
+#     def haversine(lat1, lon1, lat2, lon2):
+#         R = 6371.0
+#         lat1 = radians(lat1)
+#         lon1 = radians(lon1)
+#         lat2 = radians(lat2)
+#         lon2 = radians(lon2)
+#         dlon = lon2 - lon1
+#         dlat = lat2 - lat1
+#         a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
+#         c = 2 * atan2(sqrt(a), sqrt(1 - a))
+#         distance = R * c
+#         return distance
+
+
+#     # Register the haversine function as a UDF
+#     haversine_udf = F.udf(haversine, FloatType())
+
+
+
+#     df = df.withColumn(
+#     'km_after_last_maintenance', 
+#     F.when(
+#         F.col('old.km_after_last_maintenance').isNull() | F.col('old.latitude').isNull() | F.col('old.longitude').isNull() | F.col('new.latitude').isNull() | F.col('new.longitude').isNull(), 
+#         0
+#     ).otherwise(
+#         F.col('old.km_after_last_maintenance') + haversine_udf(F.col('old.latitude'), F.col('old.longitude'), F.col('new.latitude'), F.col('new.longitude'))
+#     )
+# )
+    
     
 
     # # Read the existing data from Cassandra
@@ -56,13 +94,13 @@ if __name__ == "__main__":
     # updated_df = updated_df.withColumn("avg_speed", col("old.avg_speed") + col("new.speed"))
 
     # Start the query to print the output to the console
-    # query = df \
-    #     .writeStream \
-    #     .outputMode("append") \
-    #     .format("console") \
-    #     .start()
+    query = df \
+        .writeStream \
+        .outputMode("append") \
+        .format("console") \
+        .start()
 
-    # query.awaitTermination()
+    query.awaitTermination()
 
 
     # Define function to write DataFrame to Cassandra
@@ -73,12 +111,12 @@ if __name__ == "__main__":
           .mode("append") \
           .save()
 
-    # Write the streaming data to Cassandra
-    query = df \
-        .writeStream \
-        .outputMode("append") \
-        .foreachBatch(write_to_cassandra) \
-        .trigger(processingTime='2 seconds') \
-        .start()
+    # # Write the streaming data to Cassandra
+    # query = df \
+    #     .writeStream \
+    #     .outputMode("append") \
+    #     .foreachBatch(write_to_cassandra) \
+    #     .trigger(processingTime='2 seconds') \
+    #     .start()
 
-    query.awaitTermination()
+    # query.awaitTermination()
