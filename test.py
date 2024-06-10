@@ -4,6 +4,16 @@ import psycopg2
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut
 import time
+import math
+from datetime import timedelta
+# import pymysql
+# import pymysql.cursors
+import osmnx as ox
+from leuvenmapmatching.matcher.distance import DistanceMatcher
+from leuvenmapmatching.map.inmem import InMemMap
+import requests
+import folium
+
 
 
 def get_street_address(p):
@@ -138,9 +148,6 @@ ORDER BY
 
 
 
-    print('============================================================')
-    print('number of rows:', len(rows))
-    print('thing_id:', thing_id)
 
 
     # Initialize variables
@@ -170,7 +177,7 @@ ORDER BY
             end_date = row[0]
             if start_journey is not None:
                 active_time = (datetime.strptime(str(end_date), "%Y-%m-%d %H:%M:%S") - datetime.strptime(str(start_trace_date), "%Y-%m-%d %H:%M:%S")).total_seconds() / 60
-                cursor.execute('SELECT AVG(speed), MAX(speed) FROM trace_week WHERE thing_id = %s AND trace_date >= %s AND trace_date <= %s', (thing_id, start_trace_date, end_date))
+                cursor.execute('SELECT AVG(speed), MAX(speed) FROM trace_week WHERE thing_id = %s AND trace_date >= %s AND trace_date <= %s AND max_speed > 0' , (thing_id, start_trace_date, end_date))
                 avg_speed, max_speed = cursor.fetchone()
 
                 start_point = get_street_address(path.split(';')[0])
@@ -216,14 +223,135 @@ print("number of journeys:", len(all_journeys))
 # );
 # """)
 
-# Insert the rows into the PostgreSQL table
-for journey in all_journeys:
-    insert_query = """
-    INSERT INTO journey (journey_id, thing_id, traveled_distance, idle_time, active_time, avg_speed, max_speed, date_id)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
-    """
-    cursor2.execute(insert_query, journey)
 
+
+
+# # Insert the rows into the PostgreSQL table
+# for journey in all_journeys:
+#     insert_query = """
+#     INSERT INTO journey (journey_id, thing_id, traveled_distance, idle_time, active_time, avg_speed, max_speed, date_id)
+#     VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
+#     """
+#     cursor2.execute(insert_query, journey)
+
+
+
+
+# fixx paths 
+
+def haversine_distance(point1, point2):
+    lat1, lon1 = point1
+    lat2, lon2 = point2
+    R = 6371  # Earth radius in kilometers
+
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
+
+def filter_dense_clusters(gps_traces, min_distance=0.01):
+    filtered_traces = [gps_traces[0]]
+    for point in gps_traces[1:]:
+        if haversine_distance(filtered_traces[-1], point) >= min_distance:
+            filtered_traces.append(point)
+    return filtered_traces
+
+def filter_large_jumps(gps_traces, max_jump_distance=1.0):
+    filtered_traces = [gps_traces[0]]
+    for point in gps_traces[1:]:
+        if haversine_distance(filtered_traces[-1], point) <= max_jump_distance:
+            filtered_traces.append(point)
+        else:
+            print(f"Large jump detected and filtered: {filtered_traces[-1]} -> {point}")
+    return filtered_traces
+
+def parse_path_string(path_string):
+    points = path_string.split(';')
+    gps_traces = []
+    for point in points:
+        lat, lon = map(float, point.split(','))
+        gps_traces.append((lat, lon))
+    return gps_traces
+
+def map_matching_graph2(gps_traces):
+    # Filter out dense clusters and large jumps
+    filtered_traces = filter_dense_clusters(gps_traces)
+    filtered_traces = filter_large_jumps(filtered_traces)
+    
+    gpx_content = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    gpx_content += '<gpx version="1.1" creator="GraphHopper">\n<trk><name>GPS Data</name><trkseg>\n'
+    for point in filtered_traces:
+        gpx_content += f'    <trkpt lat="{point[0]}" lon="{point[1]}"></trkpt>\n'
+    gpx_content += '</trkseg></trk></gpx>'
+
+    url = 'http://localhost:8989/match?profile=car&locale=en&points_encoded=false'
+    headers = {'Content-Type': 'application/xml'}
+    
+    print("GPX Content being sent:\n", gpx_content)
+
+    response = requests.post(url, data=gpx_content, headers=headers)
+
+    if response.status_code != 200:
+        print("Request data:", gpx_content)
+        print("Response content:", response.content)
+        raise RuntimeError(f"GraphHopper API request failed with status code {response.status_code}")
+
+    data = response.json()
+
+    if 'paths' not in data or not data['paths']:
+        raise KeyError("'paths' not found in the API response")
+
+    route = data['paths'][0]['points']['coordinates']
+
+    route = [[point[1], point[0]] for point in route]
+
+    return route
+
+def format_matched_path(matched_path):
+    return ';'.join([f"{lat},{lon}" for lat, lon in matched_path])
+
+def process_path_string(path_string):
+    gps_traces = parse_path_string(path_string)
+    try:
+        matched_path = map_matching_graph2(gps_traces)
+        formatted_path = format_matched_path(matched_path)
+        return formatted_path
+    except Exception as e:
+        # Log detailed information about the problematic GPS traces
+        print(f"Error during map matching: {e}")
+        print(f"Problematic GPS traces: {gps_traces}")
+        raise
+
+
+# delete  all rows wtih empty path using on cascad
+cursor2.execute("DELETE FROM journey_dim WHERE path = ''")
+cursor2.execute("DELETE FROM journey WHERE journey_id NOT IN (SELECT journey_id FROM journey_dim)")
+
+
+
+print('============================================================')
+print('fixing paths')
+# apply process_path_string to all paths in the journey_dim table
+cursor2.execute(f"""SELECT j.journey_id, path FROM journey_dim d, journey j where date_id > '{last_date[0][0]}' and d.journey_id = d.journey_id """)
+rows = cursor2.fetchall()
+
+for row in rows:
+    # time.sleep(0.01)
+    journey_id = row[0]
+    path = row[1]
+    try:
+        matched_path = process_path_string(path)
+        cursor2.execute("UPDATE journey_dim SET path = %s WHERE journey_id = %s", (matched_path, journey_id))
+    except Exception as e:
+        print(f"Error processing path for journey_id {journey_id} with path {path}: {e}")
+        break
+
+
+
+# delete all row where path is empty
+cursor2.execute("DELETE FROM journey_dim WHERE path = ''")
+cursor2.execute("DELETE FROM journey WHERE journey_id NOT IN (SELECT journey_id FROM journey_dim)")
 
 
 
@@ -233,3 +361,7 @@ cnx2.commit()
 
 # Close the connection to the MySQL database
 cnx.close()
+
+
+print('============================================================')
+print('Paths fixed')

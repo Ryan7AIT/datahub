@@ -330,27 +330,45 @@ if __name__ == "__main__":
 
     # scaler = joblib.load('/Users/mac/Desktop/rulligh/scaler.joblib')
     
-    @udf(FloatType())
-    def predict_rul(km_after_last_maintenance, car_usage, thing_id, fuel_rolling_stddev, oil_cumsum, oil_max):
+    # @udf(FloatType())
+    # def predict_rul(km_after_last_maintenance, car_usage, thing_id, fuel_rolling_stddev, oil_cumsum, oil_max):
  
-        # rfmodel = joblib.load('/Users/mac/Desktop/rulligh/random_forest_model.joblib')
-        # scaler = joblib.load('/Users/mac/Desktop/rulligh/scaler.joblib')
+    #     # rfmodel = joblib.load('/Users/mac/Desktop/rulligh/random_forest_model.joblib')
+    #     # scaler = joblib.load('/Users/mac/Desktop/rulligh/scaler.joblib')
 
-        rfmodel = joblib.load('/Users/mac/Desktop/rulapp/random_forest_model3.joblib')
-        scaler = joblib.load('/Users/mac/Desktop/rulapp/scaler3.joblib')
+    #     rfmodel = joblib.load('/Users/mac/Desktop/rulapp/random_forest_model0.joblib')
+    #     scaler = joblib.load('/Users/mac/Desktop/rulapp/scaler0.joblib')
 
-        features = np.array([[km_after_last_maintenance, car_usage, thing_id, fuel_rolling_stddev, oil_cumsum, oil_max]])
+    #     features = np.array([[km_after_last_maintenance, car_usage, thing_id, fuel_rolling_stddev, oil_cumsum, oil_max]])
+    #     features_scaled = scaler.transform(features)
+    #     prediction = rfmodel.predict(features_scaled)
+
+    #     return float(prediction[0])
+
+
+
+    # updated_df = updated_df.withColumn('rul', predict_rul(updated_df['km_after_last_maintenance'], updated_df['car_usage'], updated_df['thing_id'], updated_df['fuel_rolling_stddev'], updated_df['oil_cumsum'], updated_df['oil_max']))
+
+
+
+
+    @udf(FloatType())
+    def predict_rul(car_usage, thing_id, oil_value, fuel_change, oil_rolling_mean, fuel_rolling_mean, oil_rolling_stddev, fuel_rolling_stddev, oil_cumsum, fuel_cumsum, oil_min, fuel_min, oil_max, fuel_max):
+    
+        rfmodel = joblib.load('/Users/mac/Desktop/rulapp/random_forest_model0.joblib')
+        scaler = joblib.load('/Users/mac/Desktop/rulapp/scaler0.joblib')
+
+        features = np.array([[car_usage, thing_id, oil_value, fuel_change, oil_rolling_mean, fuel_rolling_mean, oil_rolling_stddev, fuel_rolling_stddev, oil_cumsum, fuel_cumsum, oil_min, fuel_min, oil_max, fuel_max]])
         features_scaled = scaler.transform(features)
         prediction = rfmodel.predict(features_scaled)
 
         return float(prediction[0])
 
-
-
-    updated_df = updated_df.withColumn('rul', predict_rul(updated_df['km_after_last_maintenance'], updated_df['car_usage'], updated_df['thing_id'], updated_df['fuel_rolling_stddev'], updated_df['oil_cumsum'], updated_df['oil_max']))
+    updated_df = updated_df.withColumn('rul', predict_rul(updated_df['car_usage'], updated_df['thing_id'], updated_df['oil_value'], updated_df['fuel_change'], updated_df['oil_rolling_mean'], updated_df['fuel_rolling_mean'], updated_df['oil_rolling_stddev'], updated_df['fuel_rolling_stddev'], updated_df['oil_cumsum'], updated_df['fuel_cumsum'], updated_df['oil_min'], updated_df['fuel_min'], updated_df['oil_max'], updated_df['fuel_max']))
 
 
 
+    # =======================================================
     updated_df = updated_df.drop("car_usage","last_oil_change", "car_age","fuel_change","power_supply_voltage","engine_status","oil_value","fuel_liters","fuel_percent","oil_rolling_mean","fuel_rolling_mean","oil_rolling_stddev","fuel_rolling_stddev","oil_cumsum","fuel_cumsum","oil_min","fuel_min","oil_max","fuel_max")
 
 

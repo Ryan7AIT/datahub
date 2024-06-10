@@ -33,21 +33,28 @@ cnx = mysql.connector.connect(
 # Create a cursor object for MySQL
 cursor_mysql = cnx.cursor()
 
+
 query = """
    SELECT * 
 from alert_degre
 
 """
 
+
 cursor_mysql.execute(query)
 rows = cursor_mysql.fetchall()
 
-for row in rows:
-    cur.execute("INSERT INTO alert_deg_dim (alert_degree_id, alert_degree) VALUES (%s, %s)", (row[0], row[1]) )
+# check if alert_deg_dim it's empty
+
+cur.execute("SELECT COUNT(*) FROM alert_deg_dim")
+result = cur.fetchone()
+if result[0] == 0:
+    for row in rows:
+        cur.execute("INSERT INTO alert_deg_dim (alert_degree_id, alert_degree) VALUES (%s, %s)", (row[0], row[1]) )
 
 
 print("=====================================")
-print("alert degree are inserted succefully")
+print("alert degree up to date")
 
 query = """
 SELECT event_id, event_designation from  event
@@ -57,53 +64,57 @@ SELECT event_id, event_designation from  event
 cursor_mysql.execute(query)
 rows = cursor_mysql.fetchall()
 
-for row in rows:
-    cur.execute("INSERT INTO event_dim (event_id, event_designation) VALUES (%s, %s)", (row[0], row[1]) )
-
-print("=====================================")
-print("alert events are inserted succefully")
-
-
-
-query = """
-SELECT
-	thing_id,
-	ad.alert_degre_id,
-	ae.event_id,
-	p.point_id,
-	COUNT(*)
-FROM
-	alert_thing ath,
-	alert a,
-	alert_degre ad,
-	alert_event ae,
-	alert_point ap,
-	point p
-WHERE
-	a.alert_id = ath.alert_id
-	AND ad.alert_degre_id = a.alert_degre_id
-	AND ae.alert_id = a.alert_id
-	AND ap.alert_id = a.alert_id
-	AND p.point_id = ap.point_id
-GROUP BY
-	thing_id,
-	alert_degre_id,
-	ae.event_id,
-	p.point_id
-
-"""
-
-cursor_mysql.execute(query)
-rows = cursor_mysql.fetchall()
-
-
-
-for row in rows:
-    cur.execute("INSERT INTO alert_fact (user_id, type_id, event_id,location_id ,alert_count) VALUES (%s, %s,%s, %s, %s)", (row[0], row[1], row[2], row[3], row[4]))
+cur.execute("SELECT COUNT(*) FROM event_dim")
+result = cur.fetchone()
+if result[0] == 0:
+    for row in rows:
+        cur.execute("INSERT INTO event_dim (event_id, event_designation) VALUES (%s, %s)", (row[0], row[1]) )
 
 
 print("=====================================")
-print("ALERT data is loaded successfully")
+print("alert events is up to date")
+
+
+if result[0] == 0:
+    query = """
+    SELECT
+        thing_id,
+        ad.alert_degre_id,
+        ae.event_id,
+        p.point_id,
+        COUNT(*)
+    FROM
+        alert_thing ath,
+        alert a,
+        alert_degre ad,
+        alert_event ae,
+        alert_point ap,
+        point p
+    WHERE
+        a.alert_id = ath.alert_id
+        AND ad.alert_degre_id = a.alert_degre_id
+        AND ae.alert_id = a.alert_id
+        AND ap.alert_id = a.alert_id
+        AND p.point_id = ap.point_id
+    GROUP BY
+        thing_id,
+        alert_degre_id,
+        ae.event_id,
+        p.point_id
+
+    """
+
+    cursor_mysql.execute(query)
+    rows = cursor_mysql.fetchall()
+
+
+
+    for row in rows:
+        cur.execute("INSERT INTO alert_fact (user_id, type_id, event_id,location_id ,alert_count) VALUES (%s, %s,%s, %s, %s)", (row[0], row[1], row[2], row[3], row[4]))
+
+
+    print("=====================================")
+    print("ALERT data is up to date")
 
 
 
@@ -194,8 +205,16 @@ FROM
 cursor_mysql.execute(query)
 rows = cursor_mysql.fetchall()
 
-for row in rows:
-    cur.execute("INSERT INTO user_dim (user_id, user_name) VALUES (%s, %s)", (row[0], row[1]) )
+
+# check if user_dim it's empty
+
+cur.execute("SELECT COUNT(*) FROM user_dim")
+result = cur.fetchone()
+if result[0] == 0:
+    for row in rows:
+        cur.execute("INSERT INTO user_dim (user_id, user_name) VALUES (%s, %s)", (row[0], row[1]) )
+
+
     
 
 print("=====================================")
@@ -222,8 +241,13 @@ AND p.commune_id = c.commune_id
 cursor_mysql.execute(query)
 rows = cursor_mysql.fetchall()
 
-for row in rows:
-    cur.execute("INSERT INTO location_dim (province,municipality) VALUES (%s, %s)", (row[0], row[1]) )
+# check if location_dim it's empty
+cur.execute("SELECT COUNT(*) FROM location_dim")
+result = cur.fetchone()
+if result[0] == 0:
+    for row in rows:
+        cur.execute("INSERT INTO location_dim (province,municipality) VALUES (%s, %s)", (row[0], row[1]) )
+
     
 
 print("=====================================")
@@ -356,6 +380,16 @@ for row in formatted_rows:
 # Commit the changes to the MySQL database
 cnx.commit()
 
+
+print("=====================================")
+print('date_dim copied')
+
+print("=====================================")
+print('last date_id:', last_date_id)
+
+
+
+
 # Execute the query to join the tables from MySQL and PostgreSQL
 query = f"""
 SELECT 
@@ -390,7 +424,7 @@ FROM (
         trace_week t
     JOIN 
         date_dim d ON t.trace_date_day = d.full_date
-        WHERE      thing_id <= 4333 AND t.date_insertion_day > {last_date_id}
+        WHERE      thing_id <= 4333 AND d.date_id > {last_date_id}
 ) AS subquery
 WHERE 
     prev_latitude IS NOT NULL
@@ -402,6 +436,7 @@ GROUP BY
 
 """
 
+print('inserting into car monitoring')
 
 cursor_mysql.execute(query)
 

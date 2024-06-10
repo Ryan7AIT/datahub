@@ -94,13 +94,13 @@ if __name__ == "__main__":
     # updated_df = updated_df.withColumn("avg_speed", col("old.avg_speed") + col("new.speed"))
 
     # Start the query to print the output to the console
-    query = df \
-        .writeStream \
-        .outputMode("append") \
-        .format("console") \
-        .start()
+    # query = df \
+    #     .writeStream \
+    #     .outputMode("append") \
+    #     .format("console") \
+    #     .start()
 
-    query.awaitTermination()
+    # query.awaitTermination()
 
 
     # Define function to write DataFrame to Cassandra
@@ -111,12 +111,12 @@ if __name__ == "__main__":
           .mode("append") \
           .save()
 
-    # # Write the streaming data to Cassandra
-    # query = df \
-    #     .writeStream \
-    #     .outputMode("append") \
-    #     .foreachBatch(write_to_cassandra) \
-    #     .trigger(processingTime='2 seconds') \
-    #     .start()
+    # Write the streaming data to Cassandra
+    query = df \
+        .writeStream \
+        .outputMode("append") \
+        .foreachBatch(write_to_cassandra) \
+        .trigger(processingTime='2 seconds') \
+        .start()
 
-    # query.awaitTermination()
+    query.awaitTermination()
