@@ -71,7 +71,7 @@ if __name__ == "__main__":
         .options(table="vehicle_performance", keyspace="pfe") \
         .load()
     
-
+ 
     updated_df = df.alias('new').join(existing_df.alias('old'), 'thing_id', 'leftouter')
 
     updated_df = updated_df.withColumn('avg_speed', F.when(F.col('old.avg_speed').isNull(), F.col('new.speed')).otherwise((F.col('new.speed') + F.col('old.avg_speed')) /2))
@@ -114,6 +114,9 @@ if __name__ == "__main__":
 )
 
 
+    # calcaute the fuel consumed based on the traveled_distance
+
+
 
     updated_df = updated_df.withColumn(
     'km_after_last_maintenance', 
@@ -127,7 +130,7 @@ if __name__ == "__main__":
 
 
 
-    updated_df = updated_df.withColumn('traveled_distance', lit(0.0))
+    # updated_df = updated_df.withColumn('traveled_distance', lit(0.0))
 
     # select the columns to be saved in cassandra
     current_date = datetime.now()

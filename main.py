@@ -2286,14 +2286,14 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
             # select alert with type 1
             cassandra_df = cassandra_df.filter(cassandra_df['type_id'] == 1)
 
-            if(thing_id):
-                cassandra_df = cassandra_df.filter(cassandra_df['thing_id'] == str(thing_id))
+            # if(thing_id):
+            #     cassandra_df = cassandra_df.filter(cassandra_df['thing_id'] == str(thing_id))
 
-            if(group_id):
-                cassandra_df = cassandra_df.filter(cassandra_df['group_id'] == str(group_id))            
+            # if(group_id):
+            #     cassandra_df = cassandra_df.filter(cassandra_df['group_id'] == str(group_id))            
 
-            else:
-                cassandra_df = cassandra_df.groupBy("full_date").agg(F.sum("alert_number").alias("alert_number"))
+            # else:
+            cassandra_df = cassandra_df.groupBy("full_date").agg(F.sum("alert_number").alias("alert_number"))
 
 
 
@@ -2759,14 +2759,14 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
             # select alert with type 1
             cassandra_df = cassandra_df.filter(cassandra_df['type_id'] == 2)
 
-            if(thing_id):
-                cassandra_df = cassandra_df.filter(cassandra_df['thing_id'] == str(thing_id))
+            # if(thing_id):
+            #     cassandra_df = cassandra_df.filter(cassandra_df['thing_id'] == str(thing_id))
 
-            if(group_id):
-                cassandra_df = cassandra_df.filter(cassandra_df['group_id'] == str(group_id))            
+            # if(group_id):
+            #     cassandra_df = cassandra_df.filter(cassandra_df['group_id'] == str(group_id))            
 
-            else:
-                cassandra_df = cassandra_df.groupBy("full_date").agg(F.sum("alert_number").alias("alert_number"))
+            # else:
+            cassandra_df = cassandra_df.groupBy("full_date").agg(F.sum("alert_number").alias("alert_number"))
 
 
 
@@ -2824,7 +2824,6 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                 v.date_id = d.date_id
                                 AND year = {years}
                                 AND month = {months}
-                        AND t.group_id = {group_id}
                                     AND v.type_id = 2
 
                                         
@@ -3030,14 +3029,14 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
             # select alert with type 1
             cassandra_df = cassandra_df.filter(cassandra_df['type_id'] == 3)
 
-            if(thing_id):
-                cassandra_df = cassandra_df.filter(cassandra_df['thing_id'] == str(thing_id))
+            # if(thing_id):
+            #     cassandra_df = cassandra_df.filter(cassandra_df['thing_id'] == str(thing_id))
 
-            if(group_id):
-                cassandra_df = cassandra_df.filter(cassandra_df['group_id'] == str(group_id))            
+            # if(group_id):
+            #     cassandra_df = cassandra_df.filter(cassandra_df['group_id'] == str(group_id))            
 
-            else:
-                cassandra_df = cassandra_df.groupBy("full_date").agg(F.sum("alert_number").alias("alert_number"))
+            # else:
+            cassandra_df = cassandra_df.groupBy("full_date").agg(F.sum("alert_number").alias("alert_number"))
 
 
 
@@ -3094,7 +3093,6 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                 v.date_id = d.date_id
                                 AND year = {years}
                                 AND month = {months}
-                        AND t.group_id = {group_id}
                                     AND v.type_id = 3
 
                                         

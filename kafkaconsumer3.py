@@ -16,6 +16,10 @@ import pandas as pd
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut
 
+import os
+os.environ['PYSPARK_PYTHON'] = '/usr/bin/python3'
+os.environ['PYSPARK_DRIVER_PYTHON'] = '/usr/bin/python3'
+
 if __name__ == "__main__":
     spark = SparkSession.builder.appName("KafkaConsumer")\
         .config('spark.jars.packages', 'org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.0,com.datastax.spark:spark-cassandra-connector_2.12:3.1.0')\
