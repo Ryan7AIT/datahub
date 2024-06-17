@@ -1,5 +1,13 @@
 to create the batch tables => createDw.py
 ================================================
 batch etl => ETL.py 
+            test.py
             filler.py
 ================================================
+
+streaming pipeline  => kafkaprodcer.py : produce postitions
+                    kafkaprodcer2.py : produce alerts
+
+                    kafkaconsumer.py: consume postitions
+                    kafkaconsumer2.py: update the stream storeage
+                    kafkaconsumer3.py: consume alerts
