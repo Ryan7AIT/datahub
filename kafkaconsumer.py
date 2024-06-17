@@ -5,10 +5,13 @@ from pyspark.sql.types import StructType, StringType, DoubleType,IntegerType
 from pyspark.sql import functions as F
 from pyspark.sql.types import FloatType
 
+from pyspark.sql import Window
+
 
 if __name__ == "__main__":
     spark = SparkSession.builder.appName("KafkaConsumer")\
         .config('spark.jars.packages', 'org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.0,com.datastax.spark:spark-cassandra-connector_2.12:3.1.0')\
+        .config("spark.sql.cassandra.read.partitioning.strategy", "KeyGroupedPartitioner") \
         .getOrCreate()
 
     df = spark \
@@ -48,52 +51,32 @@ if __name__ == "__main__":
 
 
 
-#     # Define the haversine function
-#     def haversine(lat1, lon1, lat2, lon2):
-#         R = 6371.0
-#         lat1 = radians(lat1)
-#         lon1 = radians(lon1)
-#         lat2 = radians(lat2)
-#         lon2 = radians(lon2)
-#         dlon = lon2 - lon1
-#         dlat = lat2 - lat1
-#         a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
-#         c = 2 * atan2(sqrt(a), sqrt(1 - a))
-#         distance = R * c
-#         return distance
-
-
-#     # Register the haversine function as a UDF
-#     haversine_udf = F.udf(haversine, FloatType())
-
-
-
-#     df = df.withColumn(
-#     'km_after_last_maintenance', 
-#     F.when(
-#         F.col('old.km_after_last_maintenance').isNull() | F.col('old.latitude').isNull() | F.col('old.longitude').isNull() | F.col('new.latitude').isNull() | F.col('new.longitude').isNull(), 
-#         0
-#     ).otherwise(
-#         F.col('old.km_after_last_maintenance') + haversine_udf(F.col('old.latitude'), F.col('old.longitude'), F.col('new.latitude'), F.col('new.longitude'))
-#     )
-# )
-    
+    existing_df = spark.read \
+        .format("org.apache.spark.sql.cassandra") \
+            .options(table="trace", keyspace="pfe", partitioner="org.apache.spark.sql.cassandra.KeyGroupedPartitioner") \
+        .load()
     
 
-    # # Read the existing data from Cassandra
-    # existing_df = spark.read \
-    #     .format("org.apache.spark.sql.cassandra") \
-    #     .options(table="vehicle_performance", keyspace="pfe") \
-    #     .load()
-    
+    # read data from existing_df and when data is noisy replace with the avg of the last 5 values
+# Define window specification to get the last element
+    window_spec = Window.partitionBy("thing_id").orderBy(F.col("trace_date").desc())
 
-    # updated_df = df.alias('new').join(existing_df.alias('old'), 'thing_id', 'leftouter')
+    # Get the last element for each thing_id in existing_df
+    last_element_df = existing_df.withColumn("last_speed", F.last("speed").over(window_spec)) \
+                                .select("thing_id", "last_speed").distinct()
 
-    # Calculate the new measurements based on the event data and the current state
-    # TODO: Replace this with your actual calculation logic
-    # updated_df = updated_df.withColumn("avg_speed", col("old.avg_speed") + col("new.speed"))
+    # Join the df with last_element_df to get the last speed value
+    df = df.join(last_element_df, on="thing_id", how="left")
 
-    # Start the query to print the output to the console
+    # Replace speed with the last speed value if speed is greater than 100
+    df = df.withColumn(
+        "speed",
+        F.when(F.col("speed") > 200, F.col("last_speed")).otherwise(F.col("speed"))
+    ).drop("last_speed")
+
+
+
+    # # Start the query to print the output to the console
     # query = df \
     #     .writeStream \
     #     .outputMode("append") \

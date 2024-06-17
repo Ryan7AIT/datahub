@@ -29,7 +29,7 @@ session.execute("""
     speed int,
     engine_status text,
     oil_value double,
-    fuel_liters int,
+    fuel_liters double,
     fuel_percent double,
                 km_after_last_maintance double,
                 battery double,

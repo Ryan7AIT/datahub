@@ -14,6 +14,7 @@ from pyspark.sql.functions import pandas_udf, PandasUDFType
 import pandas as pd
 from pyspark.sql import Window
 from pyspark.sql.functions import mean, stddev, sum, min, max, col, row_number
+import joblib
 
 import os
 os.environ['PYSPARK_PYTHON'] = '/usr/bin/python3'
@@ -202,28 +203,7 @@ if __name__ == "__main__":
 
 
 
-
-    # updated_df = updated_df.withColumn("oil_rolling_mean", lit(1.2))
-    # updated_df = updated_df.withColumn("fuel_rolling_mean", lit(0.3))
-    # updated_df = updated_df.withColumn("oil_rolling_stddev", lit(0.14))
-    # updated_df = updated_df.withColumn("fuel_rolling_stddev", lit(0.0016))
-    # updated_df = updated_df.withColumn("oil_cumsum", lit(0.9))
-    # updated_df = updated_df.withColumn("fuel_cumsum", lit(0.7))
-    # updated_df = updated_df.withColumn("oil_min", lit(0.8))
-    # updated_df = updated_df.withColumn("fuel_min", lit(1.2))
-    # updated_df = updated_df.withColumn("oil_max", lit(1.1))
-    # updated_df = updated_df.withColumn("fuel_max", lit(1.3))
-
-
     updated_df = updated_df.withColumn("car_usage", lit(1))
-
-
-
-
-
-    
-
-
 
 
 
@@ -242,55 +222,7 @@ if __name__ == "__main__":
 
 
 
-    import joblib
 
-
-    # # Define a user-defined function that applies the model
-    # @udf(IntegerType())
-    # def predict_speeding(speed):
-    #     model = load_model('pm_model.h5')
-
-    #     # prediction = model.predict(np.array([[speed]]))
-    #     return 1
-    #     return int(prediction[0])
-    # # model = load_model('pm_model.h5')
-    # # 
-
-    #     # Define a user-defined function that applies the model
-    # @udf(IntegerType())
-    # def mlp(engine_status, power_supply_voltage, oil_value, fuel_liters, fuel_change, car_age, last_oil_change):
-    #     model = load_model('/Users/mac/Desktop/pm_model.h5')
-    #     scaler = joblib.load('/Users/mac/Desktop/my_scaler.pkl')
-
-
-    #     # prediction = model.predict(np.array([[engine_status], [power_supply_voltage], [oil_value], [fuel_liters], [fuel_change], [car_age], [last_oil_change]]))
-    #     # return int(prediction[0])
-
-    #         # Convert the inputs to a 2D array
-    #     features = np.array([[engine_status, power_supply_voltage, oil_value, fuel_liters, fuel_change, car_age, last_oil_change]])
-        
-    #     # Scale the features using the saved scaler
-    #     features_scaled = scaler.transform(features)
-        
-    #     # Reshape to 3D array (samples, timesteps, features)
-    #     features_array = features_scaled.reshape((1, 1, features_scaled.shape[1]))
-        
-    #     # Apply the model
-    #     # prediction = model.predict(features_array)
-
- 
-
-    #     # predicted_class = np.argmax(prediction)
-
-    #     predicted_class = 432
-
-    #     return int(predicted_class)
-    
-    # Apply the model to the incoming DataFrame
-    # updated_df = updated_df.withColumn('maintenance', mlp(updated_df['car_age'], updated_df['fuel_change'], updated_df['last_oil_change'], updated_df['power_supply_voltage'], updated_df['oil_value'], updated_df['fuel_liters'], updated_df['engine_status']))
-
-
-    # updated_df = updated_df.withColumn('fuel', lit(0.14))
 
 
     # Get today's date
@@ -310,47 +242,6 @@ if __name__ == "__main__":
                                     .when(F.month(today).isin([6, 7, 8]), 'Summer')
                                     .otherwise('Fall'))
 
-
-# Now df includes a new column 'is_speeding' with the model's predictions
-
-
-
-    # =======================================================
-    # =======================================================
-    # =======================================================
-    # =======================================================
-    # =======================================================
-    # =======================================================
-    # =======================================================
-    # =======================================================
-    # =======================================================
-    # =======================================================
-    # =======================================================
-
-    # predict the rul of the car 
-
-
-
-    # scaler = joblib.load('/Users/mac/Desktop/rulligh/scaler.joblib')
-    
-    # @udf(FloatType())
-    # def predict_rul(km_after_last_maintenance, car_usage, thing_id, fuel_rolling_stddev, oil_cumsum, oil_max):
- 
-    #     # rfmodel = joblib.load('/Users/mac/Desktop/rulligh/random_forest_model.joblib')
-    #     # scaler = joblib.load('/Users/mac/Desktop/rulligh/scaler.joblib')
-
-    #     rfmodel = joblib.load('/Users/mac/Desktop/rulapp/random_forest_model0.joblib')
-    #     scaler = joblib.load('/Users/mac/Desktop/rulapp/scaler0.joblib')
-
-    #     features = np.array([[km_after_last_maintenance, car_usage, thing_id, fuel_rolling_stddev, oil_cumsum, oil_max]])
-    #     features_scaled = scaler.transform(features)
-    #     prediction = rfmodel.predict(features_scaled)
-
-    #     return float(prediction[0])
-
-
-
-    # updated_df = updated_df.withColumn('rul', predict_rul(updated_df['km_after_last_maintenance'], updated_df['car_usage'], updated_df['thing_id'], updated_df['fuel_rolling_stddev'], updated_df['oil_cumsum'], updated_df['oil_max']))
 
 
 
