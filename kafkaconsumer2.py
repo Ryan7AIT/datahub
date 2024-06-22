@@ -52,7 +52,7 @@ if __name__ == "__main__":
         .add("longitude", DoubleType()) \
         .add("engine_status", StringType())\
         .add("oil_value", IntegerType())\
-        .add("fuel_liters", IntegerType())\
+        .add("fuel_liters", FloatType())\
         .add("fuel_percent", IntegerType())\
         .add("thing_name", StringType())
 
@@ -80,7 +80,16 @@ if __name__ == "__main__":
     updated_df = updated_df.withColumn('idle_time', F.when(F.col('old.idle_time').isNull(), 0).otherwise(F.when(F.col('new.engine_status') == 0, F.col('old.idle_time') + ((F.unix_timestamp('new.trace_date') - F.unix_timestamp('old.trace_date')) )).otherwise(F.col('old.active_time'))))
     updated_df = updated_df.withColumn('active_time', F.when(F.col('old.active_time').isNull(), 0).otherwise(F.when(F.col('new.engine_status') == 1, F.col('old.active_time') + ((F.unix_timestamp('new.trace_date') - F.unix_timestamp('old.trace_date')) )).otherwise(F.col('old.active_time'))))
 
-    updated_df = updated_df.withColumn('fuel', F.when(F.col('old.fuel').isNull(), F.col('new.fuel_liters')).otherwise(F.col('old.fuel') + F.col('new.fuel_liters')))
+    updated_df = updated_df.withColumn('fuel', F.when(F.col('old.fuel').isNull(), F.col('new.fuel_liters')).otherwise(F.col('old.fuel') + 0.019))
+    # updated_df = updated_df.withColumn('fuel', F.when(F.col('old.fuel').isNull(), F.col('new.fuel_liters')).otherwise(33))
+
+    # get the int value of the fuel
+    updated_df = updated_df.withColumn('fuel', F.col('fuel').cast(IntegerType()))
+
+
+    
+    
+
 
 
     # Define the haversine function
@@ -168,7 +177,7 @@ if __name__ == "__main__":
     
 
     # Define a window partitioned by 'thing_id' and ordered by 'trace_date' with a window frame of 10 previous rows
-    window_spec = Window.partitionBy("thing_id").orderBy("trace_date").rowsBetween(-20, 0)
+    window_spec = Window.partitionBy("thing_id").orderBy("trace_date").rowsBetween(-30, 0)
 
     # Compute the rolling statistics with a fixed-length window of the last 3 observations
     trace_df = trace.withColumn("oil_rolling_mean", mean("oil_value").over(window_spec)) \
@@ -203,7 +212,7 @@ if __name__ == "__main__":
 
 
 
-    updated_df = updated_df.withColumn("car_usage", lit(1))
+    updated_df = updated_df.withColumn("car_usage", lit(2))
 
 
 
@@ -263,13 +272,14 @@ if __name__ == "__main__":
 
 
     # =======================================================
-    updated_df = updated_df.drop("car_usage","last_oil_change", "car_age","fuel_change","power_supply_voltage","engine_status","oil_value","fuel_liters","fuel_percent","oil_rolling_mean","fuel_rolling_mean","oil_rolling_stddev","fuel_rolling_stddev","oil_cumsum","fuel_cumsum","oil_min","fuel_min","oil_max","fuel_max")
+    updated_df = updated_df.drop("car_usage","last_oil_change", "car_age","fuel_change","power_supply_voltage","engine_status","oil_value","fuel_percent","oil_rolling_mean","fuel_rolling_mean","oil_rolling_stddev","fuel_rolling_stddev","oil_cumsum","fuel_cumsum","oil_min","fuel_min","oil_max","fuel_max","fuel_liters")
 
 
+    # rename fuel liters to fuel
 
 
     # Start the query to print the output to the console
-    # query = updated_df \
+    # query = df \
     #     .writeStream \
     #     .outputMode("append") \
     #     .format("console") \

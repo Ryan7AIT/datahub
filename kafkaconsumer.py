@@ -32,8 +32,8 @@ if __name__ == "__main__":
         .add("speed", IntegerType()) \
         .add("engine_status", StringType())\
         .add("oil_value", IntegerType())\
-        .add("fuel_liters", IntegerType())\
-        .add("fuel_percent", IntegerType())\
+        .add("fuel_liters", DoubleType())\
+        .add("fuel_percent", DoubleType())\
         .add("battery",DoubleType())
     
 
@@ -50,6 +50,9 @@ if __name__ == "__main__":
 
 
 
+
+    # keep only two decimal points 
+    df = df.withColumn("fuel_percent", F.round(df["fuel_percent"], 2))
 
     existing_df = spark.read \
         .format("org.apache.spark.sql.cassandra") \
@@ -99,7 +102,7 @@ if __name__ == "__main__":
         .writeStream \
         .outputMode("append") \
         .foreachBatch(write_to_cassandra) \
-        .trigger(processingTime='2 seconds') \
+        .trigger(processingTime='10 seconds') \
         .start()
 
     query.awaitTermination()

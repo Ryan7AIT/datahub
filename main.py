@@ -1104,8 +1104,7 @@ async def get_distance(thing_id: Optional[int]=None, group_id: Optional[int]=Non
             if(thing_id):
                 cassandra_df = cassandra_df.filter(cassandra_df['thing_id'] == str(thing_id))
 
-            else:
-                cassandra_df = cassandra_df.groupBy("full_date").agg(F.sum("traveled_distance").alias("traveled_distance"))
+            cassandra_df = cassandra_df.groupBy("full_date").agg(F.sum("traveled_distance").alias("traveled_distance"))
 
             
             cassandra_df = cassandra_df.select("full_date", 'traveled_distance')
@@ -1354,6 +1353,8 @@ async def get_distance(thing_id: Optional[int]=None, group_id: Optional[int]=Non
         # Creating a list containing years and distances lists
         result_list = [years, distances]
         return result_list
+    
+
 
 
 
@@ -1401,8 +1402,8 @@ async def get_thing(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
             if(thing_id):
                 cassandra_df = cassandra_df.filter(cassandra_df['thing_id'] == str(thing_id))
 
-            else:
-                cassandra_df = cassandra_df.groupBy("full_date").agg(F.sum("active_time").alias("active_time"), F.sum("idle_time").alias("idle_time"))
+            
+            cassandra_df = cassandra_df.groupBy("full_date").agg(F.sum("active_time").alias("active_time"), F.sum("idle_time").alias("idle_time"))
 
 
 
@@ -1687,13 +1688,14 @@ async def get_speed(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
             if(thing_id):
                 cassandra_df = cassandra_df.filter(cassandra_df['thing_id'] == str(thing_id))
 
-            else:
-                cassandra_df = cassandra_df.groupBy("full_date").agg(F.avg("avg_speed").alias("avg_speed"), F.max("max_speed").alias("max_speed"))
+            cassandra_df = cassandra_df.groupBy("full_date").agg(F.avg("avg_speed").alias("avg_speed"), F.max("max_speed").alias("max_speed"))
 
 
 
             
             cassandra_df = cassandra_df.select("full_date", 'avg_speed','max_speed')
+
+
 
 
             if thing_id:
@@ -1827,7 +1829,7 @@ async def get_speed(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
 
             r = [row[0] for row in result.collect()]
             r2 = [row[1] for row in result.collect()]
-            r3 = [row[1] for row in result.collect()]
+            r3 = [row[2] for row in result.collect()]
 
 
                 # Stop the SparkSession
@@ -1999,8 +2001,8 @@ async def get_fuel(thing_id: Optional[int]=None, group_id: Optional[int]=None, t
             if(thing_id):
                 cassandra_df = cassandra_df.filter(cassandra_df['thing_id'] == str(thing_id))
 
-            else:
-                cassandra_df = cassandra_df.groupBy("full_date").agg(F.sum("fuel").alias("fuel_consumed"))
+            
+            cassandra_df = cassandra_df.groupBy("full_date").agg(F.sum("fuel").alias("fuel_consumed"))
 
 
 
@@ -2853,7 +2855,7 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                 v.date_id = d.date_id
                                 AND year = {years}
                                 AND month = {months}
-                        AND t.type_id = {type_id}
+                        AND v.type_id = {type_id}
                                     AND v.type_id = 2
 
                                         
@@ -3122,7 +3124,7 @@ async def get_alert(thing_id: Optional[int]=None, group_id: Optional[int]=None, 
                                 v.date_id = d.date_id
                                 AND year = {years}
                                 AND month = {months}
-                        AND t.type_id = {type_id}
+                        AND v.type_id = {type_id}
                                     AND v.type_id = 3
 
                                         
@@ -3492,11 +3494,13 @@ async def get_fuel_consumption(thing_id: Optional[int]=None, group_id: Optional[
     """
     """
 
-    cluster = Cluster(['localhost'])
-    session = cluster.connect('pfe')  # Replace 'pfe' with your keyspace
+    # connect to postgresql
+
 
     # Query to count the number of unique thing_id
-    query = "SELECT SUM(fuel) FROM vehicle_performance"
+    select_query = "SELECT SUM(fuel) FROM vehicle_peroformance"
+
+    
 
     if thing_id :
         select_query += f""" WHERE thing_id = {thing_id} """
@@ -3505,6 +3509,19 @@ async def get_fuel_consumption(thing_id: Optional[int]=None, group_id: Optional[
         select_query += f""" WHERE group_id = {group_id} """
     elif type_id:
         select_query += f""" WHERE type_id = {type_id} """
+
+
+    cursor_postgres.execute(select_query)
+    rows = cursor_postgres.fetchall()
+
+    # make a dict from that list
+
+    result = []
+    for row in rows:
+        result.append({
+            "fuel_consumption": int(row[0])
+        })
+    return result
 
 
     result = session.execute(query)
@@ -3703,6 +3720,27 @@ async def get_historical_fuel(thing_id:Optional[int]=None) -> Union[list, None]:
 
 
 
+@app.get('/get_carsML')
+async def get_carsML():
+     
+    query = "SELECT * from cars_needing_maintenance WHERE maintenance != 'done'"
+
+    cursor_postgres.execute(query)
+    rows = cursor_postgres.fetchall()
+
+    # make a dict from that list
+
+    result = []
+    for row in rows:
+        result.append({
+            "thing_id": row[1],
+            "name": row[2],
+            "maintenance": row[3],
+            "maintenance_date": row[4]
+        })
+
+    return result
+
 # define a route to get the historical battery volatge
 @app.get('/historical/battery')
 async def get_historical_battery(thing_id:Optional[int]=None) -> Union[list, None]:
@@ -3801,4 +3839,18 @@ async def login(username: str = Form(...), password: str = Form(...)):
             headers={"WWW-Authenticate": "Bearer"},
         )
     return {"message": "Login successful"}
+
+
+
+
+
+
+# UPDATE pfe.vehicle_performance SET avg_speed = 1 WHERE thing_id IN (3152, 2239, 3038, 338, 4699, 629, 1599, 4775);
+# UPDATE pfe.vehicle_performance SET max_speed = 2 WHERE thing_id IN (3152, 2239, 3038, 338, 4699, 629, 1599, 4775);
+# UPDATE pfe.vehicle_performance SET fuel = 1 WHERE thing_id IN (3152, 2239, 3038, 338, 4699, 629, 1599, 4775);
+# UPDATE pfe.vehicle_performance SET active_time = 1 WHERE thing_id IN (3152, 2239, 3038, 338, 4699, 629, 1599, 4775);
+# UPDATE pfe.vehicle_performance SET traveled_distance = 30 WHERE thing_id IN (3152, 2239, 3038, 338, 4699, 629, 1599, 4775);
+
+
+
 
