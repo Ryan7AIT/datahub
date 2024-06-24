@@ -3741,6 +3741,63 @@ async def get_carsML():
 
     return result
 
+
+
+
+@app.get('/get_carsAll')
+async def get_carsML(page: int = 1):
+
+
+    offset = (page - 1) * 10
+     
+    query = f""" 
+    SELECT thing_designation,thing_id, thing_plate from thing_dim LIMIT 15 OFFSET {offset}
+      """
+
+    cursor_postgres.execute(query)
+    rows = cursor_postgres.fetchall()
+
+    # make a dict from that list
+
+    result = []
+    for row in rows:
+        result.append({
+            "thing_id": row[1],
+            "name": row[0],
+            "plate": row[2]
+        })
+
+    return result
+
+
+
+
+@app.get('/get_carsAll2')
+async def get_carsML2():
+
+
+     
+    query = f""" 
+    SELECT thing_designation,thing_id, thing_plate from thing_dim 
+      """
+
+    cursor_postgres.execute(query)
+    rows = cursor_postgres.fetchall()
+
+    # make a dict from that list
+
+    result = []
+    for row in rows:
+        result.append({
+            "thing_id": row[1],
+            "name": row[0],
+            "plate": row[2]
+        })
+
+    return result
+
+
+
 # define a route to get the historical battery volatge
 @app.get('/historical/battery')
 async def get_historical_battery(thing_id:Optional[int]=None) -> Union[list, None]:
